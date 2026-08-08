@@ -20,8 +20,8 @@ UTI closes that gap by making behavior visible: attach a Bean, hit play, and see
 
 ## Core Components (v1 scope)
 
-- **BeanTracker** — attach to any GameObject. Captures position (x/y/z), rotation, and other configurable fields on an interval (every update / every FixedUpdate / every N seconds / every N ticks — user's choice). Just captures data, doesn't do anything with it. Works the same whether it's on a player, a car, an NPC, an AI ally, a projectile, or a prop — or, via `BeanMouseTracker`, the mouse cursor itself.
-- **BeanLogger** — takes what BeanTracker captures and outputs it (console, CSV/file, in-memory buffer). Decoupled from the tracker so people can swap or extend output without touching capture logic.
+- **BeanTracker** — attach to any GameObject. Captures position (x/y/z), rotation, and other configurable fields on an interval (every update / every FixedUpdate / every N seconds — user's choice). Just captures data, doesn't do anything with it. Works the same whether it's on a player, a car, an NPC, an AI ally, a projectile, or a prop — or, via `BeanMouseTracker`, the mouse cursor itself.
+- **BeanLogger** — takes what BeanTracker captures and outputs it (console, CSV/JSON Lines file, in-memory buffer, or a custom `IBeanOutput` sink). Decoupled from the tracker so people can swap or extend output without touching capture logic.
 - **BeanVisualizer** — plots the captured movement back into the Scene view as a path/trail (gizmo-drawn line, points per tick, maybe color-coded by time or speed). Live, during Play Mode only.
 - **BeanSnapshotExporter** — a fourth, decoupled piece added mid-project (see Change Log): renders the recorded path through a real Camera into a saved PNG, so there's a durable artifact to review *after* the run ends, not just a live gizmo. See `USAGE.md`/`READING_LOGS_AND_VISUALS.md` for the full field reference on all four.
 
@@ -119,7 +119,20 @@ These aren't new features so much as closing gaps between "works in a clean one-
 - Configurable capture fields beyond transform (velocity, custom component values via delegate/callback).
 - Categorical/string-valued extras (or a documented convention for encoding state like an AI's
   current behavior — patrol/chase/attack — as a float), since `extras` today is numeric-only.
-- Export formats beyond CSV (JSON?).
+- ~~Export formats beyond CSV — JSON, specifically as JSON Lines (one object per sample), not a
+  single JSON array.~~ — **built and verified live 2026-08-08**: new `JsonlBeanOutput`
+  (`IBeanOutput`), `BeanLogger.OutputTargets` gained a `Json` flag alongside `Console`/`Csv`, and
+  `BeanConfig` gained `DefaultOutputTargets` so a project can pick its preferred format(s) once.
+  The real motivation over CSV was never "easier to parse" — plain CSV parsed without friction all
+  session, including by an AI agent reading it directly — it's **structured `extras`**:
+  `CsvBeanOutput` packs `extras` into one flat `key=value;key=value` string column (a fixed CSV
+  schema can't handle a varying key set), where JSON's `extras` is a real nested object with
+  natively-typed values instead. Fit the existing `IBeanOutput` extension point directly, no core
+  `BeanTracker` changes needed. Once both file-based outputs existed side by side, their identical
+  `StreamWriter`-lifecycle code got pulled into a shared `BeanFileOutputBase` (see `DESIGN.md`
+  §8.2). Verified live in `project 2`: clean compile, 0 console errors, 97/97 EditMode tests
+  passing, both before and after the refactor. See `DESIGN.md` §8.2/§8.7,
+  `READING_LOGS_AND_VISUALS.md`'s JSON Lines section.
 - Replay: play back a recorded run visually, not just as a static path.
 - Optional validator/assert layer, opt-in, once the core kit has legs.
 - A runtime (non-Editor-only) trail option — e.g. `LineRenderer`-drawn — so a path is visible in
@@ -176,12 +189,65 @@ These aren't new features so much as closing gaps between "works in a clean one-
   T15):** independent-buffers is now EditMode-tested (several `BeanTracker`s driven at once, no
   shared state) — the gizmo-draw-cost-at-realistic-counts half is still a live Play Mode check.
 
+## Dream To-Do
+
+Bigger, further-out ideas — not MVP, not scoped, not committed to. These are concepts worth
+remembering, not a plan. Nothing here should be started without a real design pass first.
+
+- **A 3D-explorable scene artifact, not just a fixed-angle snapshot.** Instead of (or alongside)
+  `BeanSnapshotExporter`'s flat PNG, export something a dev can actually rotate/pan/zoom through
+  after the fact — genuinely "walk around" the captured scene and path rather than being stuck with
+  whichever angle(s) got picked ahead of time. Would completely solve the "one angle doesn't show
+  everything" problem multi-angle capture only partially addresses, in a much more open-ended way.
+  **Real cost, why this is a dream and not a roadmap item:** this means exporting and simplifying
+  real scene geometry to a portable format ("scaled down and simplified to be a smaller file" —
+  decimated/low-poly, not a full scene dump), then either relying on an external 3D viewer or
+  building/embedding one — a genuinely different category of feature from anything built so far,
+  closer to a second product bolted onto UTI than an extension of the existing snapshot pipeline.
+  Directly conflicts with the stated "deliberately basic, not polished... fast sanity check, not a
+  portfolio-quality screenshot" philosophy behind `BeanSnapshotExporter` (`DESIGN.md` §8.4) unless
+  scoped very carefully. Needs a real design pass (export format, geometry simplification approach,
+  viewer story) before any code — noted 2026-08-08, purely conceptual.
+- **Demo/onboarding sample scenes** (car, NPC, player) under a `Samples~/` folder, previously scoped
+  as an active test item (T08). **Demoted to Dream To-Do 2026-08-08** after proposing it and being
+  corrected: building our own demo/sample Unity project or scene purely to test or showcase UTI is
+  out of scope — real, substantial time/token cost for very low verification value, and it
+  contradicts the whole premise of the Bring-Your-Own-Test Protocol (`DESIGN.md` §12) — we are
+  testers using other people's real projects, not developers building our own. Genre coverage
+  (car/NPC/projectile) is instead exercised opportunistically via whatever already exists in a real
+  consuming project (see `TESTS/TestTracker.md` T08). If ever revisited, it would need to piggyback
+  on a project that already exists rather than being built from scratch.
+
 ## Naming
 
 "UTI" is a joke and a working title — memorable, a little absurd, very "programmer humor." Folder/namespace uses it for now; can rebrand before any real launch without much friction since it's isolated to this project folder.
 
 ## Change Log
 
+- 2026-08-08 — **JSON Lines export Roadmap item marked built and verified live** (moved from
+  "Feature ideas" — see the Roadmap section above). Also extracted `BeanFileOutputBase`, a shared
+  base class between `CsvBeanOutput` and `JsonlBeanOutput` once their `StreamWriter`-lifecycle code
+  turned out to be identical. Verified in `project 2` via direct Unity MCP access: clean compile, 0
+  console errors, 97/97 EditMode tests, both before and after the refactor. Full detail in
+  `DESIGN.md`'s Change Log and `TESTS/TestTracker.md`.
+- 2026-08-08 — **Standing rule: never build our own demo/sample Unity projects to test UTI.**
+  Proposed building `Samples~/` car/NPC/player demo scenes to close test-row T08; corrected
+  directly: real time/token cost for low verification value, and contradicts the whole premise of
+  the Bring-Your-Own-Test Protocol (`DESIGN.md` §12) — we're testers using real projects, not
+  developers building our own. The demo-scene idea moved to this file's own Dream To-Do section
+  above; T08 repurposed in `TESTS/TestTracker.md`; rule also written into `CLAUDE.md` and session
+  memory.
+- 2026-08-08 — T12/T14 (§"Robustness fixes" in the Roadmap above) fully closed — the last two
+  Play-Mode-only test gaps, live-verified in `project 2` after this session's Unity MCP connection
+  turned out to support real Play Mode entry and `GameObject.SetActive` (both hard-blocked in every
+  prior session). `EveryFixedUpdate` samples landed exactly on the physics tick; pooled-object
+  `SetActive` reuse correctly truncated (default) and correctly accumulated (`AppendAcrossReuse`)
+  across a real reuse cycle. Pure verification, no behavior changed. Full detail in
+  `TESTS/TestTracker.md`'s Change Log.
+- 2026-08-08 — Sharpened the JSON export Feature idea (JSON Lines format, structured `extras` as
+  the real motivation) and added a new **Dream To-Do** section — bigger, further-out, not-MVP
+  concepts distinct from the regular Roadmap — seeded with a 3D-explorable-scene-artifact idea per
+  user request, deliberately not scoped or started.
 - 2026-08-08 — **Went public: repo created at github.com/DataFright/Unity-Testing-Inspector, MIT
   licensed, first commit pushed.** Reorganized the file structure for a real public repo: this file
   is the former `README.md`, renamed to `PROJECT_OVERVIEW.md` and moved into a new `docs/` folder
@@ -319,10 +385,3 @@ These aren't new features so much as closing gaps between "works in a clean one-
   UTI to debug their game currently has no way to review `BeanVisualizer`'s path after the fact,
   since it's live-Editor-Gizmos-only. Surfaced by user feedback while chasing T05's repeated
   screenshot-tooling failures. Not implemented yet — tracked for a real design pass, not built now.
-- 2026-08-06 — Expanded Roadmap: added a "Robustness fixes" subsection (CSV filename collisions,
-  object pooling lifecycle, untested `EveryFixedUpdate`/`CustomCapture` paths — see DESIGN.md
-  §13 for the full reasoning), new feature ideas (categorical extras, runtime/non-gizmo trail
-  option), and a "Broader validation" note on testing past the one-Bean-clean-demo shape toward
-  multi-Bean and projectile/AI-heavy scenes.
-- 2026-08-06 — Added Change Log section (project convention, see CLAUDE.md).
-- 2026-08-06 — Initial README created: elevator pitch, problem statement, core components, design philosophy, use cases, roadmap, naming rationale.

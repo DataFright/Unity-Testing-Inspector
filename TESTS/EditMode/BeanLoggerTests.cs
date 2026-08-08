@@ -372,6 +372,179 @@ namespace UTI.Tests
         }
 
         [Test]
+        public void ResolveFilePath_JsonExtension_DefaultsToJsonlUnderProjectRoot()
+        {
+            var captureTime = new System.DateTime(2026, 8, 8, 12, 0, 0, System.DateTimeKind.Utc);
+
+            string path = BeanLogger.ResolveFilePath(null, "PlayerPlane", "abc12345", captureTime, "jsonl");
+
+            StringAssert.Contains("BeanLogs", path);
+            StringAssert.EndsWith("_PlayerPlane_abc12345_bean.jsonl", path);
+        }
+
+        [Test]
+        public void JsonOutput_WritesOneJsonObjectPerLine()
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"bean_test_{System.Guid.NewGuid():N}.jsonl");
+
+            var go = new GameObject("BeanLoggerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            var logger = go.AddComponent<BeanLogger>();
+            logger.OutputTargets = BeanOutputTargets.Json;
+            logger.FilePath = path;
+            logger.Open();
+
+            tracker.ClearSamples();
+            tracker.StartTracking();
+            tracker.SimulateFrame(1f / 60f);
+            tracker.SimulateFrame(1f / 60f);
+            logger.Close();
+
+            string[] lines = File.ReadAllLines(path);
+            File.Delete(path);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(2, lines.Length, "expected one JSON line per sample, no header row");
+            StringAssert.StartsWith("{\"tick\":0,", lines[0]);
+            StringAssert.StartsWith("{\"tick\":1,", lines[1]);
+            StringAssert.Contains("\"extras\":null", lines[0]);
+        }
+
+        [Test]
+        public void JsonOutput_CustomCaptureExtras_WritesNestedExtrasObject()
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"bean_test_{System.Guid.NewGuid():N}.jsonl");
+
+            var go = new GameObject("BeanLoggerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            var logger = go.AddComponent<BeanLogger>();
+            logger.OutputTargets = BeanOutputTargets.Json;
+            logger.FilePath = path;
+            logger.Open();
+
+            tracker.ClearSamples();
+            tracker.StartTracking();
+            tracker.CustomCapture = _ => new Dictionary<string, float> { { "health", 42f } };
+            tracker.SimulateFrame(1f / 60f);
+            logger.Close();
+
+            string[] lines = File.ReadAllLines(path);
+            File.Delete(path);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            StringAssert.Contains("\"extras\":{\"health\":42}", lines[0]);
+        }
+
+        [Test]
+        public void JsonlBeanOutput_DefaultAppendFalse_TruncatesOnReopen()
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"bean_test_{System.Guid.NewGuid():N}.jsonl");
+
+            var go = new GameObject("BeanLoggerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            tracker.ClearSamples();
+            tracker.StartTracking();
+
+            var output = new JsonlBeanOutput(path);
+            output.Open(tracker);
+            output.Write(new BeanSample(0, 0f, Vector3.zero, Quaternion.identity));
+            output.Close();
+
+            output.Open(tracker); // simulates a pooled object's reuse cycle re-opening the same path
+            output.Close();
+
+            string[] lines = File.ReadAllLines(path);
+            File.Delete(path);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(0, lines.Length, "reopening without append should truncate back to nothing");
+        }
+
+        [Test]
+        public void JsonlBeanOutput_AppendTrue_PreservesPriorRowsAcrossReopen()
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"bean_test_{System.Guid.NewGuid():N}.jsonl");
+
+            var go = new GameObject("BeanLoggerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            tracker.ClearSamples();
+            tracker.StartTracking();
+
+            var output = new JsonlBeanOutput(path, append: true);
+            output.Open(tracker);
+            output.Write(new BeanSample(0, 0f, Vector3.zero, Quaternion.identity));
+            output.Close();
+
+            output.Open(tracker); // simulates a pooled object's reuse cycle re-opening the same path
+            output.Write(new BeanSample(1, 1f, Vector3.zero, Quaternion.identity));
+            output.Close();
+
+            string[] lines = File.ReadAllLines(path);
+            File.Delete(path);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(2, lines.Length, "expected both rows preserved across the reopen");
+            StringAssert.StartsWith("{\"tick\":0,", lines[0]);
+            StringAssert.StartsWith("{\"tick\":1,", lines[1]);
+        }
+
+        [Test]
+        public void BuildActiveOutputs_BothCsvAndJsonWithExplicitFilePath_FallBackToSeparateDefaultPaths()
+        {
+            // One fixed explicit path can't safely back two different file formats at once -
+            // same precedent as BeanSnapshotExporter's multi-angle capture (DESIGN.md Sec 8.4).
+            string explicitPath = Path.Combine(Path.GetTempPath(), $"bean_test_{System.Guid.NewGuid():N}.csv");
+
+            var go = new GameObject("BeanLoggerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            var logger = go.AddComponent<BeanLogger>();
+            logger.OutputTargets = BeanOutputTargets.Csv | BeanOutputTargets.Json;
+            logger.FilePath = explicitPath;
+            logger.Open();
+
+            tracker.ClearSamples();
+            tracker.StartTracking();
+            tracker.SimulateFrame(1f / 60f);
+            logger.Close();
+
+            bool explicitPathWasCreated = File.Exists(explicitPath);
+            if (explicitPathWasCreated)
+                File.Delete(explicitPath);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.IsFalse(explicitPathWasCreated, "neither output should have written to the shared explicit path when both formats are active");
+        }
+
+        [Test]
+        public void ApplyConfigDefaults_NullConfig_LeavesOutputTargetsUnchanged()
+        {
+            var go = new GameObject("BeanLoggerTestObject");
+            var logger = go.AddComponent<BeanLogger>();
+            logger.OutputTargets = BeanOutputTargets.Csv;
+
+            logger.ApplyConfigDefaults(null);
+
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(BeanOutputTargets.Csv, logger.OutputTargets);
+        }
+
+        [Test]
+        public void ApplyConfigDefaults_WithConfig_AppliesOutputTargets()
+        {
+            var go = new GameObject("BeanLoggerTestObject");
+            var logger = go.AddComponent<BeanLogger>();
+
+            var config = new BeanConfig { DefaultOutputTargets = BeanOutputTargets.Json };
+
+            logger.ApplyConfigDefaults(config);
+
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(BeanOutputTargets.Json, logger.OutputTargets);
+        }
+
+        [Test]
         public void ResolveFilePath_NoExplicitPath_DefaultsUnderProjectRootSubfolderWithTimestampAndToken()
         {
             var captureTime = new System.DateTime(2026, 8, 7, 13, 45, 30, 250, System.DateTimeKind.Utc);

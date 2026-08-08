@@ -26,7 +26,7 @@ Four small, independent pieces — use whichever ones you actually need:
 
 - **`BeanTracker`** — attach to any GameObject. Captures position, rotation, and (optionally)
   custom fields on an interval you choose (every frame / every fixed update / every N seconds).
-- **`BeanLogger`** — writes what got captured to the Console and/or a CSV file.
+- **`BeanLogger`** — writes what got captured to the Console and/or a CSV/JSON Lines file.
 - **`BeanVisualizer`** — draws the captured path live as a line in the Scene view.
 - **`BeanSnapshotExporter`** — renders the recorded path through a real Camera into a saved PNG
   (with the real scene geometry around it), so there's a durable artifact to review *after* the
@@ -80,8 +80,8 @@ in your test project immediately, no commit/push round-trip needed:
 
 Add `BeanTracker` to any GameObject with a Transform you want to watch. Hit Play — it's already
 capturing. Add `BeanLogger`, `BeanVisualizer`, and/or `BeanSnapshotExporter` alongside it for
-console/CSV output, a live Scene-view trail, and a persisted PNG, respectively. Any combination,
-none required beyond the tracker itself.
+console/CSV/JSON output, a live Scene-view trail, and a persisted PNG, respectively. Any
+combination, none required beyond the tracker itself.
 
 ## Docs
 

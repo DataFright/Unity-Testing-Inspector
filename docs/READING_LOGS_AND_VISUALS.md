@@ -13,7 +13,7 @@ are plain text on purpose, so an AI assistant reading the file directly can use 
 All of UTI's generated output lands under one folder at your project's root — `<project root>/UTI/`
 — sitting alongside Unity's own `Library/`, `Logs/`, `Temp/`. Two subfolders:
 
-- **`UTI/BeanLogs/`** — CSVs from `BeanLogger`.
+- **`UTI/BeanLogs/`** — CSVs and/or JSON Lines files (`.jsonl`) from `BeanLogger`.
 - **`UTI/BeanSnapshots/`** — PNGs from `BeanSnapshotExporter`.
 
 Every file is named `{timestamp}_{objectName}_{uniqueToken}_...`, timestamp first — so sorting
@@ -87,6 +87,36 @@ tick,timestamp,x,y,z,qx,qy,qz,qw,extras
   logic is broken; this pattern has already found a real off-by-a-fraction trigger-distance bug in
   practice (see `TESTS/TestTracker.md`'s `project 2` closing report).
 
+## JSON Lines output
+
+One JSON object per line (a `.jsonl` file, not a single top-level JSON array), from
+`JsonlBeanOutput` — turned on via `BeanLogger.Output Targets`' `Json` flag:
+
+```
+{"tick":0,"timestamp":0.02,"position":{"x":12.5,"y":0.0,"z":8.2},"rotation":{"x":0.0,"y":0.383,"z":0.0,"w":0.924},"extras":null}
+{"tick":1,"timestamp":0.05,"position":{"x":12.6,"y":0.0,"z":8.3},"rotation":{"x":0.0,"y":0.383,"z":0.0,"w":0.924},"extras":{"velocity":15.2,"health":80.0}}
+```
+
+- **`tick`/`timestamp`/`position`/`rotation`** — same meaning and same raw-quaternion rotation as
+  CSV's columns (see above), just as named JSON fields/nested objects instead of positional
+  columns.
+- **`extras`** — `null` unless a `CustomCapture` delegate is assigned, otherwise a real nested
+  object with natively-typed numeric values (`{"velocity":15.2,"health":80.0}`) — this is JSON's
+  actual reason to exist alongside CSV, not just "another format for its own sake." CSV has to pack
+  `extras` into one flat `key=value;key=value` string column (a fixed CSV schema can't handle a
+  varying key set), which needs a second parse pass to use. JSON has no such constraint.
+- **One object per line, not a single array**, on purpose — the same reason CSV streams row-by-row
+  with periodic flushing rather than buffering the whole run in memory: a single top-level JSON
+  array can't be safely appended to mid-run the way each line here can. Read it by parsing one line
+  at a time (`File.ReadLines` + `JsonUtility`/your JSON library of choice per line), not by loading
+  the whole file as one JSON document.
+- Reading/debugging guidance is otherwise identical to CSV's section above (jumps, tick gaps,
+  frozen positions) — same underlying sample data, different serialization.
+
+Pick CSV for spreadsheet/script analysis where a flat table is what you want; pick JSON when
+`extras` actually has data in it and you want it structured rather than a string to re-parse. Both
+can be active at once (`Output Targets = Csv | Json`) if you want both.
+
 ## `BeanVisualizer` — the live Scene-view trail
 
 A line drawn through the tracked object's recorded positions, visible in the **Scene view only**,
@@ -151,6 +181,10 @@ the live-only gizmo trail.
 
 ## Change Log
 
+- 2026-08-08 — Added the JSON Lines output section (`BeanLogger.Output Targets`' new `Json` flag)
+  — format, why it exists alongside CSV (structured `extras`, not just "another format"), and how
+  to read it one line at a time rather than as a single JSON document. Verified live in `project 2`
+  (clean compile, 97/97 EditMode tests).
 - 2026-08-08 — Documented a second, distinct close-up/invisible-line symptom (T28,
   `TESTS/TestTracker.md`): real movement followed by a long idle tail can silently evict the whole
   path from the live sample buffer before a snapshot happens — different mechanism from the

@@ -21,6 +21,7 @@ namespace UTI
 
         public BeanCaptureMode DefaultCaptureMode = BeanCaptureMode.EveryUpdate;
         public float DefaultCaptureInterval = 0.5f;
+        public BeanOutputTargets DefaultOutputTargets = BeanOutputTargets.Console;
         public BeanDimensionMode DefaultDimensionMode = BeanDimensionMode.Auto;
         // Scale-dependent - a fixed 2f world units was too tight for project 2's actual scale on
         // a near-stationary path (T23, TESTS/TestTracker.md), so it's now a per-project default
@@ -86,6 +87,10 @@ namespace UTI
                         if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float interval))
                             config.DefaultCaptureInterval = interval;
                         break;
+                    case "DefaultOutputTargets":
+                        if (Enum.TryParse(value, out BeanOutputTargets outputTargets))
+                            config.DefaultOutputTargets = outputTargets;
+                        break;
                     case "DefaultDimensionMode":
                         if (Enum.TryParse(value, out BeanDimensionMode dimensionMode))
                             config.DefaultDimensionMode = dimensionMode;
@@ -124,12 +129,13 @@ namespace UTI
 
         public const string TemplateContents =
             "# UTI project config - see CONFIG.md for what each setting does.\n" +
-            "# Applied to newly-added BeanTracker/BeanSnapshotExporter components only\n" +
+            "# Applied to newly-added BeanTracker/BeanLogger/BeanSnapshotExporter components only\n" +
             "# (Unity's Reset() hook, when you add the component in the Editor) - not live\n" +
             "# at runtime, and never changes a Bean you've already configured.\n" +
             "\n" +
             "DefaultCaptureMode=EveryUpdate\n" +
             "DefaultCaptureInterval=0.5\n" +
+            "DefaultOutputTargets=Console\n" +
             "DefaultDimensionMode=Auto\n" +
             "DefaultMinFramingRadius=2\n";
 

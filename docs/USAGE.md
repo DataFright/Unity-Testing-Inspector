@@ -61,7 +61,7 @@ enemy, a bullet, the mouse cursor, anything. Hit Play. That's it: it's already c
 By itself `BeanTracker` just collects data into an in-memory buffer — nothing visible happens
 until you add one of the other pieces:
 
-- **`BeanLogger`** — prints/writes what got captured (Console and/or CSV).
+- **`BeanLogger`** — prints/writes what got captured (Console, CSV, and/or JSON Lines).
 - **`BeanVisualizer`** — draws the path live in the Scene view while Play Mode is running.
 - **`BeanSnapshotExporter`** — saves a PNG of the path (with real scene geometry around it) that
   you can open after the run ends, unlike the live-only gizmo.
@@ -112,18 +112,26 @@ reused object's CSV starts fresh each time it's re-enabled.
 
 | Field | Default | What it does |
 |---|---|---|
-| `Output Targets` | `Console` | `[Flags]` — Console, CSV, or both at once. |
-| `File Path` | *(empty)* | Explicit override; leave blank for the default location below. |
-| `Append Across Reuse` | off | For pooled objects: if on, `SetActive(false)`→`SetActive(true)` reuse keeps writing to the *same* CSV instead of starting a fresh one each time. Off by default — most objects should get a clean log per real run. |
+| `Output Targets` | `Console` | `[Flags]` — any combination of Console, CSV, and JSON Lines. |
+| `File Path` | *(empty)* | Explicit override; leave blank for the default location below. Only honored when just one file-based format (CSV or JSON) is active — see below. |
+| `Append Across Reuse` | off | For pooled objects: if on, `SetActive(false)`→`SetActive(true)` reuse keeps writing to the *same* file instead of starting a fresh one each time. Off by default — most objects should get a clean log per real run. |
 
-Default CSV location (when `File Path` is blank): `<project root>/UTI/BeanLogs/`, filename
-`{timestamp}_{objectName}_{uniqueToken}_bean.csv` — a fresh, uniquely-named file every time
-tracking starts, so running the same Bean five times to compare results gives you five files, not
-one overwritten file. See [READING_LOGS_AND_VISUALS.md](./READING_LOGS_AND_VISUALS.md) for the
-exact column format.
+Default location (when `File Path` is blank): `<project root>/UTI/BeanLogs/`, filename
+`{timestamp}_{objectName}_{uniqueToken}_bean.csv` (or `.jsonl` for JSON) — a fresh, uniquely-named
+file every time tracking starts, so running the same Bean five times to compare results gives you
+five files, not one overwritten file. See
+[READING_LOGS_AND_VISUALS.md](./READING_LOGS_AND_VISUALS.md) for both formats' exact contents,
+including why JSON exists alongside CSV (structured `extras`, not just "another format").
+
+**Both CSV and JSON at once:** an explicit `File Path` can only safely back one file, so if both
+`Output Targets` are active together, the explicit override is ignored for *both* and they each
+fall back to their own default-named file instead of silently overwriting one another.
+
+Want every *new* `BeanLogger` in this project to default to a different `Output Targets`? See
+[CONFIG.md](./CONFIG.md)'s `DefaultOutputTargets`.
 
 Own extra output sink? Add it to `CustomOutputs` (a `List<IBeanOutput>`) — anything implementing
-`Open(BeanTracker)`/`Write(BeanSample)`/`Close()` slots in alongside Console/CSV.
+`Open(BeanTracker)`/`Write(BeanSample)`/`Close()` slots in alongside Console/CSV/JSON.
 
 ## 5. `BeanVisualizer` — the live Scene-view trail
 
@@ -203,10 +211,10 @@ project's Active Input Handling (Project Settings > Player) is set to "Input Sys
 
 ## 8. `BeanConfig` — project-wide defaults, set once
 
-Don't want to configure `Capture Mode`/`Dimension Mode`/`Min Framing Radius` by hand on every
-single Bean you add to this game? `BeanConfig` is a plain text file — `<project root>/UTI/
-BeanConfig.txt` — that lets you set your preferred defaults once; every *new* `BeanTracker`/
-`BeanSnapshotExporter` you add afterward starts pre-filled to match.
+Don't want to configure `Capture Mode`/`Output Targets`/`Dimension Mode`/`Min Framing Radius` by
+hand on every single Bean you add to this game? `BeanConfig` is a plain text file — `<project
+root>/UTI/BeanConfig.txt` — that lets you set your preferred defaults once; every *new*
+`BeanTracker`/`BeanLogger`/`BeanSnapshotExporter` you add afterward starts pre-filled to match.
 
 Bootstrap it via the Editor menu — **UTI > Create Bean Config** (or **UTI > Setup Project (Config
 + Docs)**, which also copies these three docs — see §1) — which writes a commented template with
@@ -237,8 +245,12 @@ the compiled-in defaults, ready to edit. Full field-by-field explanation is in
 - **"One angle doesn't show enough"** — set `Capture Angles` to more than one entry (e.g. `Auto`,
   `Above`) to get several angles of the same run in one capture.
 - **"Bullets/enemies are pooled and their logs keep resetting"** — turn on `BeanLogger.Append
-  Across Reuse` so a reused object's CSV accumulates across `SetActive` cycles instead of
+  Across Reuse` so a reused object's log accumulates across `SetActive` cycles instead of
   truncating each time.
+- **"`extras` needs to stay structured, not a flat `key=value;key=value` string I have to
+  re-parse"** — add `Json` to `BeanLogger.Output Targets` (alongside or instead of `Csv`). Each
+  line is a standalone JSON object with `extras` as a real nested object — see
+  `READING_LOGS_AND_VISUALS.md`'s JSON Lines section.
 
 ## Known constraints, not bugs
 
@@ -262,6 +274,9 @@ the compiled-in defaults, ready to edit. Full field-by-field explanation is in
 
 ## Change Log
 
+- 2026-08-08 — Documented the new JSON Lines output (`BeanLogger.Output Targets` gained `Json`
+  alongside `Console`/`Csv`) and `BeanConfig`'s new `DefaultOutputTargets` key (§4, §8, §9) —
+  verified live in `project 2` (clean compile, 97/97 EditMode tests, no console errors).
 - 2026-08-08 — Documented a real, found-live bug (T28, `TESTS/TestTracker.md`): `BeanSnapshotExporter`
   frames/draws from the live sample buffer, not the CSV, so a long idle tail after real movement can
   silently evict the whole path before a snapshot happens. Now warns in the console when this could

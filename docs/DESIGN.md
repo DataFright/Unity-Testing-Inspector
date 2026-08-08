@@ -35,10 +35,12 @@ Captures data on any GameObject it's attached to.
 
 ### `BeanLogger` (MonoBehaviour)
 Attaches alongside (or references) a `BeanTracker`. Subscribes to `OnSample`, writes it out.
-- Config: output target (`Console` / `CSV file` / both), file path (default: `UTI/BeanLogs/`
-  under the project root, timestamp+unique-token-named for uniqueness — see `BeanArtifactPaths` and
-  §8.5, changed 2026-08-07 from `Application.persistentDataPath`).
-- Output is behind an `IBeanOutput` interface so someone can write their own sink (JSON, analytics endpoint, whatever) without touching core code.
+- Config: output targets (`[Flags]` enum — `Console` / `Csv` / `Json`, any combination), file path
+  (default: `UTI/BeanLogs/` under the project root, timestamp+unique-token-named for uniqueness —
+  see `BeanArtifactPaths` and §8.5, changed 2026-08-07 from `Application.persistentDataPath`).
+- Output is behind an `IBeanOutput` interface so someone can write their own sink (an analytics
+  endpoint, whatever) without touching core code — `ConsoleBeanOutput`/`CsvBeanOutput`/
+  `JsonlBeanOutput` (added 2026-08-08, see §8.2) are UTI's own three built-in implementations.
 
 ### `BeanVisualizer` (MonoBehaviour)
 Draws the recorded path in the Scene view.
@@ -69,7 +71,9 @@ UTI/
     IBeanOutput.cs
     BeanLogger.cs
     ConsoleBeanOutput.cs
+    BeanFileOutputBase.cs
     CsvBeanOutput.cs
+    JsonlBeanOutput.cs
     BeanVisualizer.cs
     BeanSnapshotExporter.cs
     BeanArtifactPaths.cs
@@ -90,7 +94,9 @@ UTI/
       BeanMouseTrackerTests.cs
       BeanConfigTests.cs
   Samples~/
-    (future: example scenes — car, NPC, player — the trailing ~ is UPM convention so these don't import by default)
+    (Dream To-Do only, not planned — see PROJECT_OVERVIEW.md. Building our own demo/sample scenes
+    purely to test/showcase UTI is deliberately out of scope; see §12's Bring-Your-Own-Test
+    Protocol. The trailing ~ is UPM convention so these wouldn't import by default if ever built.)
 ```
 
 Also at the package root, all added 2026-08-07 alongside `README.md`/`DESIGN.md`/
@@ -158,12 +164,16 @@ No open questions remain blocking v1; anything new belongs here as it comes up (
 
 ### 8.2 `BeanLogger`
 
-**Fields:** `tracker` (auto-`GetComponent` if unset), `outputTargets` (`[Flags]` enum so Console + CSV can both be active at once), `filePath` (default: `UTI/BeanLogs/` under the project root — see §8.5).
+**Fields:** `tracker` (auto-`GetComponent` if unset), `outputTargets` (`[Flags]` enum so any combination of Console/CSV/JSON can be active at once), `filePath` (default: `UTI/BeanLogs/` under the project root — see §8.5), `appendAcrossReuse` (§13/T14).
 
-**`IBeanOutput` contract:** `Open(BeanTracker)`, `Write(BeanSample)`, `Close()`. `BeanLogger` just owns a list of active `IBeanOutput`s built from `outputTargets`, plus any custom ones a user assigns.
+**`IBeanOutput` contract:** `Open(BeanTracker)`, `Write(BeanSample)`, `Close()`. `BeanLogger` just owns a list of active `IBeanOutput`s built from `outputTargets`, plus any custom ones a user assigns via `CustomOutputs`.
 
 - **Console output** — formatted `Debug.Log` per sample. Meant for low-frequency/dev use; if capture rate is high, this will flood the console fast (worth a code comment, not a feature to solve in v1).
-- **CSV output** — `StreamWriter` opened in `Open()` (writes header row: tick, timestamp, x, y, z, qx–qw, extras...), buffered writes with periodic flush (not flush-per-row — that's a perf trap at high tick rates), closed/flushed in `Close()`.
+- **CSV output** — `StreamWriter` opened in `Open()` (writes a header row: tick, timestamp, x, y, z, qx–qw, extras — only on a genuinely new file, so append-mode reopens don't insert a second header mid-file), buffered writes with periodic flush (not flush-per-row — that's a perf trap at high tick rates), closed/flushed in `Close()`.
+- **JSON Lines output (`JsonlBeanOutput`, added 2026-08-08)** — one JSON object per sample line (`.jsonl`, not a single top-level array — a JSON array can't be safely appended to mid-run the same way CSV already streams). No header. The actual motivation over CSV: `extras` becomes a real nested object with natively-typed values instead of CSV's one flat `key=value;key=value` string column that needs a second parse pass. See `READING_LOGS_AND_VISUALS.md`'s JSON Lines section for the exact shape.
+- **`BeanFileOutputBase` (added 2026-08-08)** — `CsvBeanOutput` and `JsonlBeanOutput` turned out to be identical in everything *except* per-line formatting and whether a header exists (directory creation, the `StreamWriter` open/flush-interval/close lifecycle), so that shared shell was pulled into one internal-use base class once JSON existed and the duplication became real rather than hypothetical. `public` only because C# requires a base class to be at least as accessible as its subclass (CS0060) — not part of UTI's own extensibility surface, which is still `IBeanOutput`.
+- **Resolving where a file lands (`ResolveFilePath`)** — one shared static method (now with an `extension` parameter, default `"csv"` for backward compatibility) backs both CSV's and JSON's default path — explicit `filePath` if set, otherwise `{timestamp}_{objectName}_{uniqueToken}_bean.{extension}` under `UTI/BeanLogs/`. If **both** CSV and JSON are active at once, an explicit `filePath` can't safely back two different files without one overwriting the other's content — same precedent as `BeanSnapshotExporter`'s multi-angle capture (§8.4) — so both fall back to their own default-named path instead of colliding.
+- **`ApplyConfigDefaults(BeanConfig)` / `Reset()` (added 2026-08-08)** — `BeanLogger` didn't participate in `BeanConfig`'s new-component-defaulting pattern until JSON output needed a project-wide default target; now it follows the exact same split as `BeanTracker`/`BeanSnapshotExporter` (§8.7): `Reset()` (Editor-only, fires when the component is added) calls `ApplyConfigDefaults(BeanConfig.Load())`, and the public `ApplyConfigDefaults` is separated out purely so it's testable without touching the real filesystem.
 
 **Lifecycle:** subscribe to `tracker.OnSample` in `OnEnable`, call `Open()` on active outputs. Call `Close()` in `OnDisable`, `OnDestroy`, *and* `OnApplicationQuit` — standalone builds don't reliably hit all three, so this is a belt-and-suspenders situation for making sure the file gets flushed.
 
@@ -406,7 +416,12 @@ each game project's `UTI/` folder (§8.5), same convention as `USAGE.md`/`READIN
 (tick/time capture choice, 2D/3D) rather than mirroring every single field on every component,
 which would be scope nobody asked for. **Added 2026-08-08:** `DefaultMinFramingRadius` (→
 `BeanSnapshotExporter.MinFramingRadius`) — the T23 fix (see §8.4/§13), letting a project set its
-own scale-appropriate framing floor once instead of the old fixed `2f` literal.
+own scale-appropriate framing floor once instead of the old fixed `2f` literal. **Also added
+2026-08-08:** `DefaultOutputTargets` (→ `BeanLogger.OutputTargets`) — the first key to affect
+`BeanLogger` rather than `BeanTracker`/`BeanSnapshotExporter`, added alongside JSON Lines output
+(§8.2) so a project can pick its preferred output format(s) once instead of setting `Output
+Targets` on every `BeanLogger` by hand. Required giving `BeanLogger` its own `Reset()`/
+`ApplyConfigDefaults()` pair for the first time — see §8.2.
 
 **Standard install step, added 2026-08-08 — `UTI > Setup Project (Config + Docs)`.** A second
 Editor menu item alongside `UTI > Create Bean Config`: does that (bootstraps `BeanConfig.txt`) and
@@ -438,12 +453,12 @@ rather than erroring, so one typo doesn't break loading the rest of the file. Sw
 a `ScriptableObject` incidentally made this *more* testable than the original design: no
 `AssetDatabase`/Editor-only lookup to work around, just plain string parsing.
 
-**Testability:** `ApplyConfigDefaults(BeanConfig config)` on both `BeanTracker` and
-`BeanSnapshotExporter` is `public`, separated from `Reset()` itself specifically so it's testable
-directly (`new BeanConfig { ... }`, no filesystem or Editor event needed) — same
-testable/untestable split used everywhere else in UTI. `BeanConfig.Load()`'s actual file read
-remains untested (same category as everywhere else UTI touches real I/O); `ParseLines` covers
-the actual logic.
+**Testability:** `ApplyConfigDefaults(BeanConfig config)` on `BeanTracker`, `BeanLogger` (added
+2026-08-08, see §8.2), and `BeanSnapshotExporter` is `public`, separated from `Reset()` itself
+specifically so it's testable directly (`new BeanConfig { ... }`, no filesystem or Editor event
+needed) — same testable/untestable split used everywhere else in UTI. `BeanConfig.Load()`'s actual
+file read remains untested (same category as everywhere else UTI touches real I/O); `ParseLines`
+covers the actual logic.
 
 ## 9. Build Order (milestones)
 
@@ -454,7 +469,11 @@ the actual logic.
 5. `package.json` + `Runtime`/`Tests` asmdefs — turn the folder into a real installable UPM package. *(Done early, out of order, so BeanBufferTests could actually run — see Change Log. `Editor.asmdef` still deferred until there's real Editor-only code to isolate.)*
 5.5. `BeanSnapshotExporter` — persisted scene+path artifact (§8.4). **Verified Pass live in little wings (T16/T17)** — real capture confirmed on the filesystem, correct path line, correct scene geometry. Since verification: gained `DimensionMode` override and a broadside-framing fix (§8.4), neither re-verified yet.
 5.6. `BeanArtifactPaths` + `BeanMouseTracker` + `BeanConfig` — shared output-location helper (§8.5), mouse-input tracking proxy (§8.6), and project-wide default-settings asset (§8.7), all added 2026-08-07. Unit-tested; `BeanMouseTracker`'s live input-reading path and `BeanConfig`'s live Editor `Reset()` behavior not yet verified in Play Mode/the Editor.
-6. Sample scenes (car, NPC, player) under `Samples~/` demonstrating each use case from the README.
+6. ~~Sample scenes (car, NPC, player) under `Samples~/` demonstrating each use case from the
+   README.~~ **Descoped 2026-08-08** — building our own demo/sample Unity scenes purely to
+   test/showcase UTI is out of scope (see §12); genre coverage is instead exercised opportunistically
+   via whatever car/NPC/projectile-like objects already exist in a real consuming project (see
+   `TESTS/TestTracker.md` T08).
 
 ## 10. Definition of Done (v1)
 
@@ -496,7 +515,12 @@ All three reference the same live source, so a change here is immediately visibl
 
 **The ideal way to verify UTI in any consuming project: find a test that already exists and
 already passes, add the relevant Beans to whatever GameObject it exercises, run that test
-completely unmodified, and report what UTI produced.** This isn't just a convenience — it's the
+completely unmodified, and report what UTI produced.** This also means never building a new
+demo/sample Unity project or scene purely to test or showcase a UTI feature — confirmed 2026-08-08
+after proposing exactly that (a `Samples~/` car/NPC/player demo scene for T08) and being corrected
+directly: we are testers using other people's real projects, not developers building our own, and
+standing up even a simple project/scene from scratch costs real, substantial time and tokens for
+very low verification value. See `TESTS/TestTracker.md` T08 and `CLAUDE.md`. This isn't just a convenience — it's the
 actual test of UTI's core promise (drop-in, zero required changes, works with whatever's already
 driving a GameObject). If verifying UTI ever requires writing new test/harness logic, that's a
 process mistake to correct, not a normal step — UTI existing at all shouldn't require a single line
@@ -532,8 +556,10 @@ real, already-working test running and the Beans already attached.
 
 ## 13. Known Limitations & Risks (v1)
 
-v1's automated tests (18/18 green) cover the "one Bean, hit Play, see output" path solidly, but
-that path doesn't exercise how UTI behaves under the load patterns common to some of its target
+v1's automated tests (18/18 green at the time this section was first written — 97/97 as of
+2026-08-08, see `TESTS/TestTracker.md` T29) cover the "one Bean, hit Play, see output" path
+solidly, but that path doesn't exercise how UTI behaves under the load patterns common to some of
+its target
 genres — particularly shooters, AI-heavy scenes, and anything using object pooling for bullets/
 projectiles. These are real gaps found by reading the actual implementation, not speculative:
 
@@ -610,7 +636,7 @@ for the new test rows tracking them.
 
 ## 14. Error Handling & Fault Isolation (added 2026-08-08)
 
-**Tracked at-a-glance in `TESTS/ErrorHandlingTracker.md`** (EH01–EH09) — same spirit as
+**Tracked at-a-glance in `TESTS/ErrorHandlingTracker.md`** (EH01–EH10) — same spirit as
 `TESTS/TestTracker.md`, one row per guarded boundary with an honest verification status, added
 per explicit request to track error handling with the same rigor as feature tests rather than only
 narratively in this section.
@@ -675,6 +701,36 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-08 — **JSON Lines export shipped and verified live, plus a duplication refactor.** New
+  `JsonlBeanOutput` (`IBeanOutput`), wired into `BeanLogger` as `BeanOutputTargets.Json` alongside
+  `Console`/`Csv`; `BeanConfig` gained `DefaultOutputTargets` and `BeanLogger` gained its first
+  `Reset()`/`ApplyConfigDefaults()` pair to consume it (§8.2/§8.7). `ResolveFilePath` generalized
+  with an `extension` parameter (default `"csv"`, every existing call site keeps compiling
+  unchanged); an explicit `FilePath` is ignored for both formats when CSV and JSON are active
+  together, same collision precedent as `BeanSnapshotExporter`'s multi-angle capture. Once both
+  `CsvBeanOutput` and `JsonlBeanOutput` existed side by side, their `StreamWriter`-lifecycle code
+  (directory creation, flush-interval batching, `Close()`) turned out to be identical except for
+  per-line formatting and whether a header exists — extracted into a shared `BeanFileOutputBase`
+  (§8.2) rather than left duplicated across two files. **Verified live in `project 2`** via this
+  session's direct Unity MCP connection, both before and after the refactor: clean compile, 0
+  console errors, 97/97 EditMode tests passing (10 new tests covering JSON output, `ApplyConfigDefaults`,
+  and the CSV+JSON collision fallback). This closes the "unverified, suspected of spamming the
+  console" open item from a prior session's `HANDOFF.md` — it wasn't the JSON code; both compiled
+  clean the whole time.
+- 2026-08-08 — **T08 descoped from "build demo scenes" to "use existing projects" — standing rule
+  added.** Proposed building `Samples~/` car/NPC/player demo scenes; corrected directly by the user:
+  building a new demo/sample Unity project purely to test/showcase UTI is out of scope (real
+  time/token cost, low verification value, contradicts the Bring-Your-Own-Test Protocol's whole
+  premise). §4/§9/§12 updated to reflect this; `TESTS/TestTracker.md` T08 repurposed; the old
+  demo-scene idea moved to `PROJECT_OVERVIEW.md`'s Dream To-Do section; rule also written into
+  `CLAUDE.md` and session memory so it isn't re-proposed.
+- 2026-08-08 — **T12/T14 Play Mode gaps closed live** (§13's last two open robustness rows). This
+  session's Unity MCP connection turned out to support real Play Mode entry and `GameObject
+  .SetActive`, both hard-blocked in every prior session — see `TESTS/TestTracker.md`'s Change Log
+  for the full write-up (732 fixed-tick samples at exactly `Time.fixedDeltaTime` for T12; a real
+  2-cycle `SetActive` pooling test with matching truncate/append CSV row counts for T14). No
+  `Runtime/` source changes — this was pure verification, both behaviors already matched their
+  documented design. EditMode suite re-confirmed 105/105 with no regressions afterward.
 - 2026-08-08 — **Went public.** Repo created at github.com/DataFright/Unity-Testing-Inspector (MIT),
   first commit pushed. This file moved from the package root to `docs/DESIGN.md` as part of a
   cleanup for the public repo — root now holds only `README.md` (short pitch + fresh-clone install
@@ -895,13 +951,3 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   new real cross-check (CSV logged 36,789 rows over ~103s, consistent with that frame rate) — but
   the actual gizmo *render* still hasn't been seen; screenshot tooling failed a third time. Full
   detail in `TESTS/TestTracker.md`.
-- 2026-08-07 — T03 (console) and T04 (CSV) verified Pass in little wings on `PlayerPlane` — both outputs confirmed with 401 real captured samples, cross-checked against each other and the live buffer. T06 (decimation) downgraded to Partial: the decimation math is confirmed correct at real scale, but actual editor-slowdown behavior wasn't observed because the verification run drove `BeanTracker` via scripted calls rather than genuine real-time Play Mode. T05 (Scene-view rendering) still Planned — the underlying path data is confirmed coherent but the gizmo render itself hasn't actually been seen yet (screenshot capture failed in that session). Full detail in `TESTS/TestTracker.md`.
-- 2026-08-06 — Added §13 Known Limitations & Risks, documenting six gaps found by re-reading the
-  implementation against the shooter/AI/bullets/platformer use cases: CSV path collisions on
-  duplicate GameObject names (pooled/cloned prefabs), object pooling not accounted for in
-  Open()/Close() lifecycle, `EveryFixedUpdate` having no automated coverage (wired directly to
-  `FixedUpdate()`, bypassing the testable `SimulateFrame()` path), `CustomCapture`/`extras`
-  untested beyond null-by-default, `extras` being numeric-only (awkward for categorical AI
-  state), and multi-Bean scenes never being tested for independence or gizmo-draw cost at scale.
-- 2026-08-06 — T10 verified Pass in little wings: all 6 `BeanVisualizerTests` green, clean recompile, no console errors. 18/18 across the full `UTI.Tests` suite. All three core components (`BeanTracker`, `BeanLogger`, `BeanVisualizer`) now have their pure/deterministic logic verified — remaining gaps before v1 Definition of Done (§10) are the manual Scene-view checks (T05/T06), CSV/console manual Play Mode checks (T03/T04), cross-project package installs (T07 in `project 2`/`2d project 3`), and sample scenes (T08).
-- 2026-08-06 — Milestone 4 (`BeanVisualizer`) written per §8.3: `OnDrawGizmos`/`OnDrawGizmosSelected` path draw, `SelectIndicesToDraw` decimation (steps through at a computed interval above `maxPointsToDraw`, default 200 — no default was specified in §8.3, chosen now as a generous-but-bounded gizmo perf cap same spirit as `BeanTracker`'s ~1000-sample ring buffer default), and `ResolveColor` for the `None`/`BySpeed`/`ByTime` color modes (`BySpeed` normalizes against the fastest/slowest segment in the buffer, `ByTime` against its first/last timestamp). Both are exposed as pure functions independent of live Gizmos/Scene-view state specifically so they're EditMode-testable; 6 tests added as T10. The actual gizmo *rendering* still can't be exercised by an automated test — T05/T06 (Scene-view path visibility, decimation under real load) remain manual Play Mode checks.

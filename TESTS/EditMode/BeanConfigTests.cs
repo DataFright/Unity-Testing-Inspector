@@ -11,6 +11,7 @@ namespace UTI.Tests
             {
                 "DefaultCaptureMode=EveryNSeconds",
                 "DefaultCaptureInterval=2.5",
+                "DefaultOutputTargets=Csv",
                 "DefaultDimensionMode=Force2D",
                 "DefaultMinFramingRadius=6.5"
             };
@@ -19,6 +20,7 @@ namespace UTI.Tests
 
             Assert.AreEqual(BeanCaptureMode.EveryNSeconds, config.DefaultCaptureMode);
             Assert.AreEqual(2.5f, config.DefaultCaptureInterval);
+            Assert.AreEqual(BeanOutputTargets.Csv, config.DefaultOutputTargets);
             Assert.AreEqual(BeanDimensionMode.Force2D, config.DefaultDimensionMode);
             Assert.AreEqual(6.5f, config.DefaultMinFramingRadius);
         }
@@ -30,8 +32,31 @@ namespace UTI.Tests
 
             Assert.AreEqual(BeanCaptureMode.EveryUpdate, config.DefaultCaptureMode);
             Assert.AreEqual(0.5f, config.DefaultCaptureInterval);
+            Assert.AreEqual(BeanOutputTargets.Console, config.DefaultOutputTargets);
             Assert.AreEqual(BeanDimensionMode.Auto, config.DefaultDimensionMode);
             Assert.AreEqual(2f, config.DefaultMinFramingRadius);
+        }
+
+        [Test]
+        public void ParseLines_DefaultOutputTargetsCombinedFlags_ParsesCommaSeparatedValue()
+        {
+            // BeanOutputTargets is [Flags] - Enum.TryParse natively supports a comma-separated
+            // list of flag names, so a dev can ask for more than one output at once.
+            var lines = new[] { "DefaultOutputTargets=Console,Json" };
+
+            BeanConfig config = BeanConfig.ParseLines(lines);
+
+            Assert.AreEqual(BeanOutputTargets.Console | BeanOutputTargets.Json, config.DefaultOutputTargets);
+        }
+
+        [Test]
+        public void ParseLines_MalformedDefaultOutputTargets_LeavesDefaultUnchanged()
+        {
+            var lines = new[] { "DefaultOutputTargets=NotARealTarget" };
+
+            BeanConfig config = BeanConfig.ParseLines(lines);
+
+            Assert.AreEqual(BeanOutputTargets.Console, config.DefaultOutputTargets);
         }
 
         [Test]
@@ -102,6 +127,7 @@ namespace UTI.Tests
 
             Assert.AreEqual(BeanCaptureMode.EveryUpdate, config.DefaultCaptureMode);
             Assert.AreEqual(0.5f, config.DefaultCaptureInterval);
+            Assert.AreEqual(BeanOutputTargets.Console, config.DefaultOutputTargets);
             Assert.AreEqual(BeanDimensionMode.Auto, config.DefaultDimensionMode);
             Assert.AreEqual(2f, config.DefaultMinFramingRadius);
         }

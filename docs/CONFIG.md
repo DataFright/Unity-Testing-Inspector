@@ -18,8 +18,8 @@ to edit. (Won't overwrite one that already exists.)
 Or just create the file yourself: `<project root>/UTI/BeanConfig.txt`, plain text, one
 `Key=Value` per line.
 
-From then on, any *new* `BeanTracker` or `BeanSnapshotExporter` you add to a GameObject in this
-project starts pre-filled with whatever's in that file.
+From then on, any *new* `BeanTracker`, `BeanLogger`, or `BeanSnapshotExporter` you add to a
+GameObject in this project starts pre-filled with whatever's in that file.
 
 ## What each key actually does
 
@@ -27,6 +27,7 @@ project starts pre-filled with whatever's in that file.
 |---|---|---|
 | `DefaultCaptureMode` | new `BeanTracker`s | Which of the existing capture modes (`EveryUpdate`, `EveryFixedUpdate`, `EveryNSeconds`) a fresh `BeanTracker` starts set to. |
 | `DefaultCaptureInterval` | new `BeanTracker`s | The `Capture Interval` (seconds) a fresh `BeanTracker` starts with — only matters if `DefaultCaptureMode` is `EveryNSeconds`. |
+| `DefaultOutputTargets` | new `BeanLogger`s | Which output(s) (`Console`, `Csv`, `Json`) a fresh `BeanLogger` starts with — `[Flags]`, so a comma-separated combination like `Console,Json` is valid too. |
 | `DefaultDimensionMode` | new `BeanSnapshotExporter`s | Whether a fresh `BeanSnapshotExporter` starts on `Auto` (guess flat/2D vs. real 3D from the recorded path), or forced to `Force2D`/`Force3D`. Set this to whichever your game actually is if `Auto` ever guesses wrong for your scenes — see `READING_LOGS_AND_VISUALS.md` for what "guessing wrong" looks like. |
 | `DefaultMinFramingRadius` | new `BeanSnapshotExporter`s | The floor (world units) on how close the auto-frame camera is allowed to sit, for a fresh `BeanSnapshotExporter`. The compiled-in default (`2`) can be too tight for a larger-scale game, producing an unhelpful close-up on a near-stationary path — raise this to whatever margin makes sense at your game's actual scale, once, instead of tuning `Min Framing Radius` on every Bean by hand. |
 
@@ -36,6 +37,7 @@ Example file:
 # UTI project config - see CONFIG.md for what each setting does.
 DefaultCaptureMode=EveryFixedUpdate
 DefaultCaptureInterval=0.5
+DefaultOutputTargets=Console,Json
 DefaultDimensionMode=Force3D
 DefaultMinFramingRadius=5
 ```
@@ -67,6 +69,10 @@ trade for how few settings this actually has.
 
 ## Change Log
 
+- 2026-08-08 — Added `DefaultOutputTargets` (→ `BeanLogger`) alongside the new JSON Lines output
+  format — the first `BeanConfig` key to affect `BeanLogger` rather than `BeanTracker`/
+  `BeanSnapshotExporter`. `[Flags]`, so `Console,Json` (comma-separated) picks more than one output
+  at once. See `READING_LOGS_AND_VISUALS.md` for the JSON Lines format itself.
 - 2026-08-08 — Added `DefaultMinFramingRadius` (T23 fix, see `TESTS/TestTracker.md`) and mentioned
   the new **UTI > Setup Project (Config + Docs)** menu item, which bootstraps this file and copies
   all three end-user docs in one step — the standard first-time-setup path going forward.

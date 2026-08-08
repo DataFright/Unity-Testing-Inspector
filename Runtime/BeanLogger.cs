@@ -10,7 +10,8 @@ namespace UTI
     {
         None = 0,
         Console = 1 << 0,
-        Csv = 1 << 1
+        Csv = 1 << 1,
+        Json = 1 << 2
     }
 
     /// <summary>Subscribes to a BeanTracker's samples and forwards them to one or more IBeanOutputs.</summary>
@@ -41,12 +42,32 @@ namespace UTI
         // SetActive(false)->SetActive(true) cycles keep writing to the same file instead of each
         // reopen resolving a brand-new timestamped path (which would defeat append entirely).
         private string cachedCsvPath;
+        private string cachedJsonPath;
 
         private void OnEnable() => Open();
 
         private void OnDisable() => Close();
 
         private void OnDestroy() => Close();
+
+        // Unity calls Reset() when this component is first added in the Editor - same hook
+        // BeanTracker/BeanSnapshotExporter already use for BeanConfig defaults (see DESIGN.md
+        // Sec 8.7). Deliberately does NOT run at runtime - what's visible in the Inspector for an
+        // already-existing BeanLogger is always exactly what's used, no hidden config override.
+        private void Reset() => ApplyConfigDefaults(BeanConfig.Load());
+
+        /// <summary>
+        /// Applies a BeanConfig's defaults to this logger's serialized fields - a no-op if config
+        /// is null. Separated from Reset() so it's testable directly without touching the real
+        /// filesystem, same split used by BeanTracker/BeanSnapshotExporter.
+        /// </summary>
+        public void ApplyConfigDefaults(BeanConfig config)
+        {
+            if (config == null)
+                return;
+
+            outputTargets = config.DefaultOutputTargets;
+        }
 
         // Standalone builds don't reliably hit OnDisable/OnDestroy on quit - belt and suspenders
         // so CSV output actually gets flushed.
@@ -126,26 +147,42 @@ namespace UTI
             if ((outputTargets & BeanOutputTargets.Console) != 0)
                 activeOutputs.Add(new ConsoleBeanOutput());
 
+            // An explicit filePath override only ever backs a single file-based output safely -
+            // if both Csv and Json are active at once, one fixed path can't back two different
+            // formats without one silently overwriting the other's content. Same precedent as
+            // BeanSnapshotExporter's multi-angle capture (DESIGN.md Sec 8.4): fall back to each
+            // format's own default auto-named path instead of colliding.
+            bool bothFileFormatsActive = (outputTargets & BeanOutputTargets.Csv) != 0 && (outputTargets & BeanOutputTargets.Json) != 0;
+
             if ((outputTargets & BeanOutputTargets.Csv) != 0)
             {
-                string path = ResolveCsvPath();
+                string path = ResolveOutputPath(bothFileFormatsActive, "csv", ref cachedCsvPath);
                 activeOutputs.Add(new CsvBeanOutput(path, appendAcrossReuse));
+            }
+
+            if ((outputTargets & BeanOutputTargets.Json) != 0)
+            {
+                string path = ResolveOutputPath(bothFileFormatsActive, "jsonl", ref cachedJsonPath);
+                activeOutputs.Add(new JsonlBeanOutput(path, appendAcrossReuse));
             }
 
             activeOutputs.AddRange(CustomOutputs);
         }
 
         // Fresh path every call when appendAcrossReuse is off (original behavior); the first
-        // call's path when it's on, cached and reused for every subsequent Open() on this
-        // instance so a pooled object's reuse cycles keep landing in the same file.
-        private string ResolveCsvPath()
+        // call's path when it's on, cached (into whichever format's own cache field the caller
+        // passes by ref) and reused for every subsequent Open() on this instance so a pooled
+        // object's reuse cycles keep landing in the same file. Shared by both CSV and JSON Lines -
+        // they differ only in extension and which cache field backs them.
+        private string ResolveOutputPath(bool ignoreExplicitPath, string extension, ref string cachedPath)
         {
-            if (appendAcrossReuse && !string.IsNullOrEmpty(cachedCsvPath))
-                return cachedCsvPath;
+            if (appendAcrossReuse && !string.IsNullOrEmpty(cachedPath))
+                return cachedPath;
 
-            string path = ResolveFilePath(filePath, gameObject.name, BeanArtifactPaths.NewUniqueToken(), DateTime.UtcNow);
+            string explicitPath = ignoreExplicitPath ? null : filePath;
+            string path = ResolveFilePath(explicitPath, gameObject.name, BeanArtifactPaths.NewUniqueToken(), DateTime.UtcNow, extension);
             if (appendAcrossReuse)
-                cachedCsvPath = path;
+                cachedPath = path;
 
             return path;
         }
@@ -154,23 +191,24 @@ namespace UTI
         private const string LogSubfolder = "BeanLogs";
 
         /// <summary>
-        /// Resolves where the CSV gets written - explicit filePath if set (used as-is), otherwise
-        /// a default under BeanArtifactPaths.RootDirectory/BeanLogs/ that's unique both across
-        /// repeated runs on the same GameObject (timestamped, so "ran it 5 times, want to
+        /// Resolves where an output file gets written - explicit filePath if set (used as-is),
+        /// otherwise a default under BeanArtifactPaths.RootDirectory/BeanLogs/ that's unique both
+        /// across repeated runs on the same GameObject (timestamped, so "ran it 5 times, want to
         /// compare" doesn't silently overwrite the same file) and across duplicate GameObject
         /// names alive at once (uniqueToken, so two prefab clones both named e.g. "Bullet(Clone)"
         /// opening in the same frame - and therefore the same millisecond - still don't collide).
         /// This was the CSV half of the collision gap flagged in DESIGN.md Sec 13/T13, now fixed
         /// to match BeanSnapshotExporter's PNG side. Pure function (given a timestamp/token) so
-        /// it's testable without a live GameObject.
+        /// it's testable without a live GameObject. The extension parameter defaults to "csv" so
+        /// every existing call site (including outside this file) keeps compiling unchanged.
         /// </summary>
-        public static string ResolveFilePath(string explicitPath, string objectName, string uniqueToken, DateTime captureTimeUtc)
+        public static string ResolveFilePath(string explicitPath, string objectName, string uniqueToken, DateTime captureTimeUtc, string extension = "csv")
         {
             if (!string.IsNullOrEmpty(explicitPath))
                 return explicitPath;
 
             string timestamp = captureTimeUtc.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
-            string fileName = $"{timestamp}_{objectName}_{uniqueToken}_bean.csv";
+            string fileName = $"{timestamp}_{objectName}_{uniqueToken}_bean.{extension}";
             return BeanArtifactPaths.ResolveDefaultPath(LogSubfolder, fileName);
         }
 

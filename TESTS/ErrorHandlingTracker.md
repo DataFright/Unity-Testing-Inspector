@@ -36,6 +36,12 @@ boundary) is deliberately left to fail loudly — see "Deliberately not guarded"
 
 ## Change Log
 
+- 2026-08-08 — No new row needed for `JsonlBeanOutput`: EH02/EH03/EH04 already guard every active
+  `IBeanOutput`'s `Open()`/`Write()`/`Close()` generically (the try/catch loops in `BeanLogger`
+  don't know or care what type the output is), so adding a second file-based output alongside
+  `CsvBeanOutput` didn't add a new boundary, just another concrete type already covered by an
+  existing one. Re-confirmed live 2026-08-08 as part of the JSON export verification pass (97/97
+  EditMode suite, `project 2`) — see `TESTS/TestTracker.md` T29.
 - 2026-08-08 — Added EH10: `CaptureSnapshot()` now warns when the live sample buffer is at
   capacity, closing a real bug the `project 2` team found live (T28, `TESTS/TestTracker.md`) — a
   long idle tail silently evicting the real recorded path before a snapshot happens. Root-caused
