@@ -2,9 +2,17 @@
   "name": "com.uti.core",
   "version": "0.1.0",
   "displayName": "UTI (Unity Testing Isolator)",
-  "description": "Drop-in Unity toolkit for tracking, logging, and visualizing a GameObject's movement over time. Working-title package name/id, see README.md Naming section.",
+  "description": "Drop-in Unity toolkit for tracking, logging, and visualizing a GameObject's movement over time. Working-title package name/id, see docs/PROJECT_OVERVIEW.md's Naming section.",
   "unity": "6000.5",
   "unityRelease": "6f1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DataFright/Unity-Testing-Inspector.git"
+  },
+  "documentationUrl": "https://github.com/DataFright/Unity-Testing-Inspector#readme",
+  "changelogUrl": "https://github.com/DataFright/Unity-Testing-Inspector/blob/main/docs/PROJECT_OVERVIEW.md",
+  "licensesUrl": "https://github.com/DataFright/Unity-Testing-Inspector/blob/main/LICENSE",
   "keywords": [
     "testing",
     "tracking",

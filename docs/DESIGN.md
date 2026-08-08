@@ -1,6 +1,6 @@
 # UTI — Architecture & Design
 
-Tracking doc for how the pieces fit together. Pairs with [README.md](./README.md) (the pitch/concept) — this is the "how we'll build it" side.
+Tracking doc for how the pieces fit together. Pairs with [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) (the pitch/concept) — this is the "how we'll build it" side. See the [root README](../README.md) for the short pitch and install steps.
 
 ## Target Environment
 
@@ -675,6 +675,16 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-08 — **Went public.** Repo created at github.com/DataFright/Unity-Testing-Inspector (MIT),
+  first commit pushed. This file moved from the package root to `docs/DESIGN.md` as part of a
+  cleanup for the public repo — root now holds only `README.md` (short pitch + fresh-clone install
+  guide, replacing the old hardcoded-local-machine `file:` instructions with the real Package
+  Manager git-URL flow), `LICENSE`, `package.json`, `CLAUDE.md`, `Runtime/`, and `TESTS/`; everything
+  else (`PROJECT_OVERVIEW.md` — the renamed former `README.md` — plus this file, `HANDOFF.md`, and
+  the three end-user docs) lives under `docs/`. `BeanConfig.CopyEndUserDocsIfMissing()`'s source
+  path updated to match (`docs/<filename>` instead of the package root); verified live via
+  `project 2`'s own Unity MCP connection that all three docs resolve correctly at the new location
+  with valid content, and the old root-level path is genuinely empty (no stale duplicates).
 - 2026-08-08 — **T28 (§13): found live by the `project 2` team, root-caused live by this session,
   fixed same day.** `BeanSnapshotExporter.CaptureSnapshot()` reads the live `BeanTracker.Samples`
   ring buffer, not the CSV — a long idle tail after real movement finished can silently evict the
@@ -895,4 +905,3 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   state), and multi-Bean scenes never being tested for independence or gizmo-draw cost at scale.
 - 2026-08-06 — T10 verified Pass in little wings: all 6 `BeanVisualizerTests` green, clean recompile, no console errors. 18/18 across the full `UTI.Tests` suite. All three core components (`BeanTracker`, `BeanLogger`, `BeanVisualizer`) now have their pure/deterministic logic verified — remaining gaps before v1 Definition of Done (§10) are the manual Scene-view checks (T05/T06), CSV/console manual Play Mode checks (T03/T04), cross-project package installs (T07 in `project 2`/`2d project 3`), and sample scenes (T08).
 - 2026-08-06 — Milestone 4 (`BeanVisualizer`) written per §8.3: `OnDrawGizmos`/`OnDrawGizmosSelected` path draw, `SelectIndicesToDraw` decimation (steps through at a computed interval above `maxPointsToDraw`, default 200 — no default was specified in §8.3, chosen now as a generous-but-bounded gizmo perf cap same spirit as `BeanTracker`'s ~1000-sample ring buffer default), and `ResolveColor` for the `None`/`BySpeed`/`ByTime` color modes (`BySpeed` normalizes against the fastest/slowest segment in the buffer, `ByTime` against its first/last timestamp). Both are exposed as pure functions independent of live Gizmos/Scene-view state specifically so they're EditMode-testable; 6 tests added as T10. The actual gizmo *rendering* still can't be exercised by an automated test — T05/T06 (Scene-view path visibility, decimation under real load) remain manual Play Mode checks.
-- 2026-08-06 — Milestone 3 (`BeanLogger`) verified Pass: all 4 `BeanLoggerTests` green in little wings, clean recompile, no console errors or orphaned meta warnings. 12/12 across the full `UTI.Tests` suite. Milestone 3 is complete; `BeanVisualizer` (milestone 4) is next up per §9 build order.

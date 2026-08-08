@@ -3,8 +3,9 @@
 *This is an end-user doc — meant to be copied into your game project's `<project root>/UTI/`
 folder (the same one your CSVs/PNGs land in), not just read from the UTI package repo.*
 
-The practical "how do I actually use this" doc. [README.md](./README.md) is the pitch/concept,
-[DESIGN.md](./DESIGN.md) is the architecture, [TESTS/TestTracker.md](./TESTS/TestTracker.md) is
+The practical "how do I actually use this" doc. The [root README](../README.md) is the pitch and
+quick install, [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) is the full pitch/roadmap/history,
+[DESIGN.md](./DESIGN.md) is the architecture, [TESTS/TestTracker.md](../TESTS/TestTracker.md) is
 verification status. This one is for a developer who just wants to drop UTI into their game and
 get useful output today. See [READING_LOGS_AND_VISUALS.md](./READING_LOGS_AND_VISUALS.md) for how
 to actually interpret what comes out the other end, and [CONFIG.md](./CONFIG.md) for setting this
@@ -12,15 +13,22 @@ game's own preferred defaults in one place instead of configuring every Bean by 
 
 ## 1. Install it
 
-UTI isn't embedded in your game project — it lives in its own folder and your project references
-it as a local package.
+UTI isn't embedded in your game project — it lives in its own repo and your project references it
+as a package, either straight from GitHub or as a local clone.
 
-In your project's `Packages/manifest.json`:
+**Recommended — install directly from GitHub** via Unity Package Manager: Window > Package Manager
+> `+` > "Add package from git URL", then paste:
+
+```
+https://github.com/DataFright/Unity-Testing-Inspector.git
+```
+
+Or edit your project's `Packages/manifest.json` directly:
 
 ```json
 {
   "dependencies": {
-    "com.uti.core": "file:C:/Users/sirsw/OneDrive/Documents/claude/UTI",
+    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git",
     ...
   },
   "testables": [
@@ -28,6 +36,11 @@ In your project's `Packages/manifest.json`:
   ]
 }
 ```
+
+**Contributing to UTI itself, or want a pinned local copy instead?** Clone the repo somewhere on
+disk and point at that folder with a `"file:"` URL instead — e.g.
+`"com.uti.core": "file:C:/wherever/you/cloned/Unity-Testing-Inspector"` — so local edits show up in
+your test project immediately without needing a commit/push round-trip.
 
 The `testables` entry isn't optional if you want UTI's own tests to show up in your Test Runner —
 without it, Unity silently reports 0 tests found even though the package compiled fine. Save,

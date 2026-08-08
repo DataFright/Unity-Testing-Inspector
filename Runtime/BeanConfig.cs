@@ -156,7 +156,7 @@ namespace UTI
         };
 
         /// <summary>
-        /// Copies UTI's own end-user docs from the package's own root into
+        /// Copies UTI's own end-user docs from the package's docs/ folder into
         /// <project root>/UTI/ - these are docs for whoever's using UTI in this game, not for
         /// developing UTI itself, so they belong next to the BeanLogs/BeanSnapshots/
         /// BeanConfig.txt a dev in this project is already looking at, not buried in the separate
@@ -178,7 +178,11 @@ namespace UTI
 
                 foreach (string fileName in EndUserDocFileNames)
                 {
-                    string source = Path.Combine(packageInfo.resolvedPath, fileName);
+                    // The docs live under the package's own docs/ folder (moved there 2026-08-08
+                    // to keep the package root clean for the public repo) - only the source side
+                    // needs that extra segment, since the destination in the consuming project
+                    // still uses just the bare filename.
+                    string source = Path.Combine(packageInfo.resolvedPath, "docs", fileName);
                     string destination = Path.Combine(BeanArtifactPaths.RootDirectory, fileName);
                     if (File.Exists(source) && !File.Exists(destination))
                         File.Copy(source, destination);

@@ -24,3 +24,12 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal-only working docs (AI-agent instructions, cross-session handoff notes) - not meant for
+# the public package/repo. Ignoring the file AND its paired .meta together, same as any other file
+# fully excluded from the repo - this is NOT a blanket "ignore all .meta files" rule, see the note
+# in docs/DESIGN.md / README.md about why real asset .meta files must stay tracked.
+/CLAUDE.md
+/CLAUDE.md.meta
+/docs/HANDOFF.md
+/docs/HANDOFF.md.meta
