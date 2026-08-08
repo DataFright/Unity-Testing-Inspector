@@ -224,6 +224,24 @@ remembering, not a plan. Nothing here should be started without a real design pa
 
 ## Change Log
 
+- 2026-08-08 — **Project review pass, then follow-up work kicked off.** A full outside review of
+  the codebase, file structure, docs, and test/error-handling coverage (code quality strong,
+  decoupling and testable/untestable splits real, error-boundary discipline unusually consistent
+  for a project this size; weaknesses: no CI, `TESTS/PlayMode/` unpopulated so anything
+  Play-Mode-dependent relies on non-repeatable live sessions, doc volume disproportionate to code
+  size, git history far less granular than the prose Change Logs it sits alongside) turned into a
+  prioritized punch list. Immediate results: new `docs/ONBOARDING.md` (a short, stable map for a
+  fresh agent session — file structure, the six components, testing approach, conventions,
+  standing rules — distinct from `CLAUDE.md`'s rules and `HANDOFF.md`'s ephemeral state), and a new
+  standing practice (`CLAUDE.md`) to commit per logical unit of work going forward instead of
+  batching a session into one commit. Also added CI: `.github/workflows/tests.yml` runs the
+  EditMode suite via a new minimal, scrubbed project shell (`.github/ci-project/` — see
+  `DESIGN.md` §4/§12) on push to `main` — not yet live-verified, needs `UNITY_EMAIL`/
+  `UNITY_PASSWORD` secrets added to the repo first. Its license-activation approach changed mid-
+  setup after due diligence found the original plan (an exported license file) is machine-bound
+  and wouldn't validate on GitHub's runners — see `DESIGN.md` §12's Change Log for the full story.
+  Remaining items (closing three "code-reviewed only" error-handling rows, a few small code
+  cleanups) tracked as session tasks, to be folded into this Change Log as they land.
 - 2026-08-08 — **JSON Lines export Roadmap item marked built and verified live** (moved from
   "Feature ideas" — see the Roadmap section above). Also extracted `BeanFileOutputBase`, a shared
   base class between `CsvBeanOutput` and `JsonlBeanOutput` once their `StreamWriter`-lifecycle code

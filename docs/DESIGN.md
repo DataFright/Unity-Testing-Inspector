@@ -99,6 +99,14 @@ UTI/
     Protocol. The trailing ~ is UPM convention so these wouldn't import by default if ever built.)
 ```
 
+**`.github/` (added 2026-08-08)** — CI, not package content. `.github/workflows/tests.yml` runs
+the EditMode suite on push/PR; `.github/ci-project/` is a minimal, scrubbed Unity project shell
+(ProjectSettings + a trimmed `Packages/manifest.json` referencing UTI via a relative `file:` path)
+that exists solely so Unity's Test Runner has a real project to resolve tests from — see its own
+`README.md`. No scenes, no game content; the "no demo/sample Unity projects" rule (§12) still
+applies, this is test infrastructure, not a showcase. Dot-prefixed so it's excluded from the
+package payload the same way `Samples~/` is excluded by its trailing `~`.
+
 Also at the package root, all added 2026-08-07 alongside `README.md`/`DESIGN.md`/
 `TESTS/TestTracker.md` — but note none of these three are meant to stay *only* here, they're
 end-user docs (for the dev using UTI in their game, not for UTI's own development) and are meant
@@ -511,6 +519,45 @@ All three reference the same live source, so a change here is immediately visibl
 `TESTS/TestTracker.md` status values should reflect this honestly — "Planned" until actually run,
 "Pass"/"Fail" only after a real report back, not assumed from reading the code.
 
+### CI (added 2026-08-08)
+
+`.github/workflows/tests.yml` runs the EditMode suite (`TESTS/EditMode/`) headlessly on every push
+to `main`, against the minimal project shell at `.github/ci-project/` (see §4). This automates the
+"code gets written, EditMode tests get run" half of the loop above — it does **not** replace live
+verification of anything Play-Mode-dependent (`BeanVisualizer`'s actual gizmo draw,
+`BeanSnapshotExporter`'s actual capture, `BeanMouseTracker`'s actual input read), which still needs
+a real session against one of the three consuming projects, same as before.
+
+**Push-only trigger, deliberately, not `pull_request`.** Only someone with write access can push
+to `main`, so an outside contributor's PR can never run this workflow with access to its secrets,
+regardless of GitHub's fork-PR approval settings. PR-triggered runs can be added later, scoped more
+carefully, if the project ever gets outside contributors.
+
+**Real Unity license, activated live each run — not a portable file, and this took two attempts to
+get right.** First attempt used `game-ci/unity-test-runner` with a `UNITY_LICENSE` secret holding
+an exported license file (the classic, widely-documented approach). That failed a due-diligence
+check before ever reaching CI: Unity's licensing backend changed since most of that documentation
+was written — manual activation of a **Personal** license through `license.unity3d.com/manual` was
+discontinued (that page is Pro/Plus-serial-only now), and the newer license format Unity 6000.x
+issues locally (`UnityEntitlementLicense.xml`, replacing the old portable `Unity_lic.ulf`) has
+machine-binding identifiers baked into the signed entitlement — a license exported from one
+machine will not validate on a different one, and all GitHub-hosted runners present a shared
+HardwareId different from any real machine. **Fixed** by switching to `buildalon/unity-setup` +
+`buildalon/activate-unity-license` + `buildalon/unity-action` — actively maintained actions built
+for the post-transition licensing client, which log in live each run (`UNITY_EMAIL`/
+`UNITY_PASSWORD` secrets) rather than relying on a pre-exported file, so the resulting license is
+always correctly bound to whichever runner is actually executing. The real tradeoff this
+introduces: an actual Unity account password now lives in this repo's secrets, not just a license
+blob — the push-only trigger above exists specifically to keep that exposure as narrow as
+reasonably possible.
+
+**Not yet live-verified as of the day this was written** — the workflow exists and the project
+shell resolves the package locally, but no run has actually executed in GitHub Actions yet (needs
+the two secrets added first). Exact action versions/flags (`@v2`, `unity-action`'s `args` string)
+are a best-effort from current documentation, not confirmed against a real run — the first actual
+CI run is the real test, same "don't claim Pass before a real report" discipline as everything
+else this project tracks.
+
 ### The Bring-Your-Own-Test Protocol (formalized 2026-08-08, from a real `project 2` round)
 
 **The ideal way to verify UTI in any consuming project: find a test that already exists and
@@ -701,6 +748,26 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-08 — **CI's license activation approach corrected before its first real run** (see §12).
+  The original plan (`game-ci/unity-test-runner` + a `UNITY_LICENSE` secret holding an exported
+  license file) hit two dead ends during due diligence, neither found by reading code — both found
+  by actually trying the real-world steps and checking the result: (1) `license.unity3d.com/manual`
+  no longer supports Personal-license activation, Pro/Plus-serial-only now; (2) the newer license
+  format Unity 6000.x issues (`UnityEntitlementLicense.xml`) is machine-bound, so a file exported
+  from any one machine can't be reused on GitHub's runners. Switched to `buildalon/unity-setup` +
+  `buildalon/activate-unity-license` + `buildalon/unity-action`, which activate a Personal license
+  live each run via `UNITY_EMAIL`/`UNITY_PASSWORD` secrets instead of a portable file - the
+  workflow trigger was narrowed to push-only (not `pull_request`) specifically because this means a
+  real account password is now a repo secret, not just a license blob.
+- 2026-08-08 — **Added CI (§12) and `docs/ONBOARDING.md`, following a project review.** New
+  `.github/workflows/tests.yml` + `.github/ci-project/` (a minimal, scrubbed Unity project shell —
+  see §4) run the EditMode suite headlessly on push/PR; not yet exercised live (needs a Unity
+  license secret added to the repo first). `ci-project/ProjectSettings` started as a copy of a real
+  consuming project's settings, then had every identifying field (company/product/project name,
+  Unity Cloud project ID, organization ID) scrubbed before being committed — confirmed clean via a
+  full-folder string sweep before anything was written. Also added `docs/ONBOARDING.md`, a short
+  stable map for a fresh agent session, distinct from this file's deep architecture and
+  `HANDOFF.md`'s ephemeral state.
 - 2026-08-08 — **JSON Lines export shipped and verified live, plus a duplication refactor.** New
   `JsonlBeanOutput` (`IBeanOutput`), wired into `BeanLogger` as `BeanOutputTargets.Json` alongside
   `Console`/`Csv`; `BeanConfig` gained `DefaultOutputTargets` and `BeanLogger` gained its first

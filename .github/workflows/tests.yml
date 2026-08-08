@@ -1,0 +1,54 @@
+name: Tests
+
+# Push-only, deliberately: only someone with write access to this repo can push to main, so an
+# outside contributor's pull request can never cause this workflow to run with access to the
+# UNITY_EMAIL/UNITY_PASSWORD secrets below, regardless of GitHub's fork-PR approval settings.
+# See docs/DESIGN.md Sec 12 for the full reasoning (a prior game-ci + offline-license-file
+# approach was scrapped after finding the license file itself is machine-bound, and the realistic
+# alternative - live login each run - means real account credentials as secrets, which a
+# pull_request trigger would expose to more surface area than necessary).
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  editmode-tests:
+    name: EditMode tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout UTI
+        uses: actions/checkout@v4
+
+      - name: Install Unity
+        uses: buildalon/unity-setup@v2
+        with:
+          unity-version: 6000.5.6f1
+
+      # Live login each run, correctly bound to this runner's HardwareId - not a pre-generated
+      # license file. A license file exported from any one machine (including a maintainer's own
+      # dev machine) is bound to that machine and will not validate here - confirmed the hard way
+      # before this workflow was written this way. See docs/DESIGN.md Sec 12.
+      - name: Activate Unity Personal license
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: Personal
+          username: ${{ secrets.UNITY_EMAIL }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      # .github/ci-project is a minimal, scrubbed project shell (no scenes, no game content —
+      # see .github/ci-project/README.md) that exists solely so Unity's Test Runner has a real
+      # project to resolve UTI's own EditMode tests (TESTS/EditMode/) from.
+      - name: Run EditMode test suite
+        uses: buildalon/unity-action@v2
+        with:
+          project-path: .github/ci-project
+          args: >-
+            -runTests -batchmode -nographics -testPlatform EditMode
+            -testResults .github/ci-project/EditMode-results.xml -logFile -
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: EditMode-test-results
+          path: .github/ci-project/EditMode-results.xml
