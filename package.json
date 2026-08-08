@@ -1,0 +1,15 @@
+{
+  "name": "com.uti.core",
+  "version": "0.1.0",
+  "displayName": "UTI (Unity Testing Isolator)",
+  "description": "Drop-in Unity toolkit for tracking, logging, and visualizing a GameObject's movement over time. Working-title package name/id, see README.md Naming section.",
+  "unity": "6000.5",
+  "unityRelease": "6f1",
+  "keywords": [
+    "testing",
+    "tracking",
+    "debug",
+    "visualization",
+    "qa"
+  ]
+}

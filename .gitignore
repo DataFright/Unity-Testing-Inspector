@@ -1,0 +1,26 @@
+# Unity-generated (only relevant if this folder is ever opened directly as a Unity project;
+# normally it's referenced as a local package from a consuming project's own Library/)
+/Library/
+/Temp/
+/Obj/
+/obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
+*.tmp
+
+# IDE / generated project files
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+
+# OS
+.DS_Store
+Thumbs.db
