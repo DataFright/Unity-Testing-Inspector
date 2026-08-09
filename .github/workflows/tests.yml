@@ -28,14 +28,21 @@ jobs:
       - name: Checkout UTI
         uses: actions/checkout@v4
 
-      # cache-installation caches the Unity Editor install between runs (Hub itself still
-      # reinstalls each time, but that's fast) - the Editor download is the ~12-13 min cost
-      # every run currently pays from scratch. Confirmed via buildalon/unity-setup's own docs.
+      # cache-installation reverted 2026-08-09: it caused a real, confirmed regression rather
+      # than a speedup. Root cause (from buildalon/unity-setup's own source, src/inputs.ts, not
+      # guessed): leaving both build-targets and modules unspecified silently installs the
+      # platform's IL2CPP module (windows-il2cpp here) by default, even though this job never
+      # builds a Player - EditMode tests only need the bare Editor. That extra payload made the
+      # cache-save step (a tar+zstd compress of the whole install) expensive enough to push a real
+      # run to 35 minutes, past the 30-minute timeout, right in the middle of saving the cache -
+      # so the cache never finished, and the next run stayed cold anyway. No documented or
+      # source-confirmed way to suppress the default IL2CPP module was found (checked the README
+      # and source directly rather than guessing at one under time pressure), so caching is
+      # reverted for now rather than risk another broken run. See DESIGN.md Sec 12.
       - name: Install Unity
         uses: buildalon/unity-setup@v2
         with:
           unity-version: 6000.5.6f1
-          cache-installation: true
 
       # Live login each run, correctly bound to this runner's HardwareId - not a pre-generated
       # license file. A license file exported from any one machine (including a maintainer's own

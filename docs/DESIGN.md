@@ -537,12 +537,22 @@ to `main`, so an outside contributor's PR can never run this workflow with acces
 regardless of GitHub's fork-PR approval settings. PR-triggered runs can be added later, scoped more
 carefully, if the project ever gets outside contributors.
 
-**`cache-installation: true` added 2026-08-09** to the "Install Unity" step — `buildalon/unity-setup`
-caches the Unity *Editor* install between runs (confirmed via its own docs; Hub itself still
-reinstalls each time, but that's fast). Every prior run paid the full ~12-13 min Editor download
-from scratch; this was noted as a known, low-risk speedup right after CI first went green and is
-now actually wired in. Not yet re-verified with a live run (first cache-hit run will confirm it
-actually shortens things, rather than just not breaking anything).
+**`cache-installation: true` tried and reverted, 2026-08-09 — a real regression, not a speedup.**
+Added to the "Install Unity" step right after CI first went green, expecting it to skip the
+~12-13 min Editor download on repeat runs. Live result was the opposite: the very next run took
+35 minutes and hit the job's 30-minute timeout, right in the middle of the cache-save step
+("Saving Unity installation cache..." - a `tar`+`zstd` compress of the whole install). Root-caused
+from `buildalon/unity-setup`'s own source (`src/inputs.ts`), not guessed: leaving both
+`build-targets` and `modules` unspecified silently installs the platform's IL2CPP module
+(`windows-il2cpp` here) by default - real, unwanted extra payload for a job that only runs EditMode
+tests and never builds a Player. That extra size made the cache-save expensive enough to blow the
+timeout, meaning the cache never finished saving, so the next run stayed cold regardless - the
+project would have paid the cache-save cost every run without ever actually getting a cache hit.
+No documented or source-confirmed way to suppress the default IL2CPP module was found (checked the
+README and source directly rather than guessing one under time pressure), so `cache-installation`
+was removed rather than risk another broken run. Reverted back to the last configuration actually
+confirmed stable. Worth revisiting later with `modules`/`build-targets` explicitly scoped down, but
+not attempted blind.
 
 **Real Unity license, activated live each run — not a portable file, and this took two attempts to
 get right.** First attempt used `game-ci/unity-test-runner` with a `UNITY_LICENSE` secret holding
@@ -783,6 +793,15 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-09 13:17 — **CI's `cache-installation` reverted - caused a real 35-minute timeout, not a
+  speedup.** Root-caused from `buildalon/unity-setup`'s own source rather than guessed: with no
+  `build-targets`/`modules` specified, it silently installs the platform's IL2CPP module
+  (`windows-il2cpp`) by default - unneeded for an EditMode-only job - and that extra payload made
+  the cache-save step expensive enough to blow the 30-minute timeout mid-save, so the cache never
+  actually persisted. Reverted to the last confirmed-stable config. See §12 for the full writeup.
+  Also: two commits landed back-to-back for T30 (the flawed draft, then its fix), each triggering
+  its own full CI run - a real process miss, not just a docs issue; the flawed draft should have
+  been caught before pushing at all, not fixed with a second push.
 - 2026-08-09 11:50 — **T05's brief Pass marking reverted back to Planned, per direct user
   correction.** Earlier the same day, T05 was marked Pass based on screenshots the user provided
   showing a live gizmo line. Corrected: this session did not produce those screenshots itself, could
