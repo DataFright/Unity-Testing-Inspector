@@ -53,7 +53,7 @@ even in sessions with otherwise-full execution — use `AppDomain.CurrentDomain.
 | T27 | Package/Install, BeanVisualizer, BeanSnapshotExporter | Full uninstall + fresh reinstall (fixes any doc-copy gaps from before `UTI > Setup Project` existed), followed by running UTI live during the team's own blue→yellow→red box jump test — a genuinely dynamic multi-box scene, unlike this session's synthetic near-stationary repro | See "Fresh Install Verification Round" below — remove the package + `<project 2 root>/UTI/` entirely, reinstall, run `UTI > Setup Project (Config + Docs)`, add all four Beans to the Player, then run the real blue/yellow/red jump test with Play Mode actually running and try a 2+ angle capture on that path | Package reinstalls cleanly with all docs present; `BeanVisualizer`'s live Scene-view line actually tracks the real jump path while Play Mode runs (T05/T06); multi-angle capture reads clearly across a real multi-box path, not just a single static point | `project 2` | **Complete, full report received 2026-08-08 — mostly Pass, two real findings (see T28).** Uninstall/reinstall clean both directions (CS0104 fix survived the cycle); `UTI > Setup Project` worked exactly as documented; `USAGE.md` alone was sufficient with zero ambiguity to add all four Beans; real Play Mode traversal succeeded, CSV independently verified as physically correct (smooth jump arc, correct peak/resting heights). `BeanVisualizer`'s live Scene-view trail stayed unconfirmed — the team's own tooling couldn't get a usable Scene-view screenshot, a tooling limitation on their end, not a UTI finding; genuinely needs a human at an interactive Editor window. The multi-angle capture *did* surface two real, related findings — see T28, not a config mistake, root cause confirmed live. | 2026-08-08 |
 | T28 | BeanSnapshotExporter | `CaptureSnapshot()` reads the live `BeanTracker.Samples` ring buffer, not the CSV — a long idle tail after real movement finished can silently evict the entire interesting path from the buffer before a snapshot happens, before `BeanConfig`/`CaptureAngles`/anything else even comes into play | Track real movement well past `BeanTracker.MaxSamples` (default 1000) worth of samples, then keep tracking stationary for `MaxSamples`+ more samples, then capture. Reproduced directly via this session's live Unity MCP access: 200 samples of real 9m movement + 3000 stationary samples | Buffer should still reflect real path extent, or at minimum the dev should be warned that older samples were evicted — previously neither happened silently | `project 2` | **Found live 2026-08-08 by the `project 2` team's T27 round, root cause confirmed live by this session, fixed the same day.** The team's report flagged two symptoms from one real multi-angle capture (blue→yellow→red jump, ~9m path, then tracking left running ~55s longer than needed): (1) no visible path line in any of 3 angle captures, (2) `Auto Frame Camera` producing a tight close-up on just the final resting position despite the real ~9m path — correctly suspected as *possibly* T23-related but a different shape (real movement + long stationary tail, not fully-stationary). **Confirmed as one unified root cause, not two separate bugs and not a config mistake:** reproduced live in `project 2` itself — after 200 samples of real 9m movement followed by 3000 stationary samples, the live buffer's Z-span dropped to exactly 0 and first/last buffered positions were identical, proving the ring buffer (`BeanBuffer`, capacity = `BeanTracker.MaxSamples`, default 1000) had fully evicted every real-movement sample by capture time. `ComputePathBounds`/`BuildPathPositions` were working correctly against what they could see — they just couldn't see the real path anymore. **Fixed:** new `BeanSnapshotExporter.IsBufferAtCapacity(sampleCount, maxSamples)` (pure, unit-tested) plus a `Debug.LogWarning` in `CaptureSnapshot()` when the buffer is full, explaining exactly what may have happened and how to avoid it (raise `Max Samples`, or call `StopTracking()` promptly). Does not change framing/rendering behavior itself — makes the failure mode visible instead of silent. Not yet re-verified with a real capture in this exact scenario (unit-tested + live-reproduced at the buffer level only). | 2026-08-08 |
 | T29 | BeanLogger | JSON Lines output (`JsonlBeanOutput`, `BeanOutputTargets.Json`), `BeanConfig.DefaultOutputTargets`, and the `BeanFileOutputBase` refactor that followed | Run the expanded `UTI.Tests.BeanLoggerTests` (10 new tests: JSON write/format/extras, append-across-reopen, the CSV+JSON explicit-`FilePath`-collision fallback, `ApplyConfigDefaults`) + `UTI.Tests.BeanConfigTests` (2 new `DefaultOutputTargets` parse tests) | All pass: one JSON object per sample, no header; `extras` a real nested object (`null` when unset); append/truncate-on-reopen matches CSV's existing behavior exactly; both CSV and JSON active with an explicit `FilePath` set falls back to separate default paths instead of colliding | project 2 | **Built and verified live 2026-08-08, both before and after a same-day refactor.** This picked up a prior session's unverified, paused-mid-task work (see `HANDOFF.md`'s former "open problem" — a suspected compile error spamming `project 2`'s console). Checked directly via this session's own Unity MCP connection: `UTI.JsonlBeanOutput` resolved cleanly in the loaded `UTI.Runtime` assembly, 0 console errors, full EditMode suite 97/97 via `TestRunnerApi` (not just re-run, driven live and its `TestResults.xml` read back directly). The suspected console-spam cause was never real — both compiled clean the whole time. Once `JsonlBeanOutput` existed alongside `CsvBeanOutput`, their identical `StreamWriter`-lifecycle code (directory creation, flush-interval batching, `Close()`) was extracted into a shared `BeanFileOutputBase` (see `DESIGN.md` §8.2); re-ran the same 97/97 suite immediately after with 0 regressions. | 2026-08-08 |
-| T30 | Package/Install, BeanVisualizer, BeanSnapshotExporter | First-ever fully external install: a fourth test project (`first project`, a fresh/default Unity URP template with no prior UTI exposure and no existing gameplay) installs UTI from the **public GitHub URL** (not a local `file:` reference), builds a simple movement test from scratch, and directly verifies `BeanVisualizer`'s live gizmo trail (T05) and `BeanSnapshotExporter`'s snapshot output with their own eyes | See the relay prompt below | Package installs cleanly from the GitHub URL; a real, independently-run report on whether the live gizmo line is actually visible, and whether snapshot PNGs show a real path line | first project | Planned — relay prompt sent, not yet run | 2026-08-09 |
+| T30 | Package/Install, BeanVisualizer, BeanSnapshotExporter | First-ever fully external install: a fourth test project (`first project`, a real flight/combat game - `BeanController`, `Bullet`, `ExplosionFireball`, `EnvironmentHazard`, `PropellerSpin` - with zero prior UTI exposure) installs UTI from the **public GitHub URL** (not a local `file:` reference) and attaches Beans to its own existing gameplay, per the Bring-Your-Own-Test Protocol (DESIGN.md Sec 12), to directly verify `BeanVisualizer`'s live gizmo trail (T05) and `BeanSnapshotExporter`'s snapshot output with their own eyes | See the relay prompt below | Package installs cleanly from the GitHub URL; a real, independently-run report on whether the live gizmo line is actually visible, and whether snapshot PNGs show a real path line | first project | Planned — relay prompt sent, not yet run | 2026-08-09 |
 
 ## Relay prompt for T30 (`first project` team)
 
@@ -61,9 +61,13 @@ Handed to a project with **zero prior UTI exposure**, specifically to get an ind
 answer on T05 (`BeanVisualizer`'s live gizmo line) — this session's own attempts never reproduced
 one, and a screenshot relayed secondhand from another team wasn't something this session could
 verify, so a truly independent, freshly-run report is the actual goal here, not just another install
-check. `first project` has no existing gameplay to attach to (unlike the Bring-Your-Own-Test
-Protocol's usual case), so this round asks for one simple, deliberately minimal movement test built
-from scratch, purely as a vehicle to exercise UTI — not a real gameplay feature.
+check. `first project` already has a real flight/combat game built (a controllable plane, bullets,
+hazards, explosions) - per the Bring-Your-Own-Test Protocol, this round attaches Beans to that
+existing gameplay and runs it unmodified. **Corrected 2026-08-09 before being sent:** an earlier
+draft of this prompt incorrectly assumed the project had no existing content and asked the team to
+build a throwaway test (a cube moving in a loop) - caught and fixed after direct user correction,
+since dictating or inventing a test for another team's project is exactly what this protocol exists
+to prevent (see DESIGN.md Sec 12).
 
 ```
 1. Install UTI from the public GitHub URL (not a local file: path - we specifically want the real
@@ -80,30 +84,27 @@ from scratch, purely as a vehicle to exercise UTI — not a real gameplay featur
    <project root>/UTI/BeanConfig.txt plus copies USAGE.md/READING_LOGS_AND_VISUALS.md/CONFIG.md
    into that same folder.
 
-3. Build ONE simple, deliberately basic movement test - just enough to produce a real, visible,
-   non-trivial path over a few seconds. Doesn't need to be a real game mechanic: a cube moving in
-   a loop or line, the default template character being moved around, whatever's fastest to stand
-   up. This is purely a vehicle for exercising UTI, not something to polish.
+3. Use your own existing gameplay, unmodified. Attach BeanTracker, BeanLogger (Console + CSV),
+   BeanVisualizer, and BeanSnapshotExporter to whatever's already flying/moving in your game - your
+   plane, however you'd normally test or play it. Don't build anything new for this; just play your
+   game as you normally would.
 
-4. Add all four to the moving object: BeanTracker, BeanLogger (Console + CSV), BeanVisualizer,
-   BeanSnapshotExporter - following USAGE.md only, as a first-time user would.
-
-5. Hit Play and actually watch the Scene view while it runs. Does BeanVisualizer's line visibly
+4. Hit Play and actually watch the Scene view while it runs. Does BeanVisualizer's line visibly
    draw and track the object's movement, live, with your own eyes on an interactive Editor window?
    This is the single most important thing this round exists to answer - please state a clear
    yes/no, not an inference. A real screenshot of it (if you can get one) would be genuinely useful
    evidence, but the direct human answer matters most.
 
-6. Try BeanSnapshotExporter: one single-angle capture (default Auto), then set Capture Angles to
+5. Try BeanSnapshotExporter: one single-angle capture (default Auto), then set Capture Angles to
    more than one (e.g. Auto, Above, Side) and capture again. Open the resulting PNG(s) directly and
    confirm: is a path line actually visible, does it roughly match the movement, is real scene
    geometry in frame (not a blank background)?
 
-7. Check the Console: 0 errors expected. Check the CSV under <project root>/UTI/BeanLogs/ - header
+6. Check the Console: 0 errors expected. Check the CSV under <project root>/UTI/BeanLogs/ - header
    row plus one row per sample, readable as plain text.
 
-8. Report back: did steps 1-2 work with zero friction from the docs alone? Did the gizmo line
-   actually render live (step 5's direct answer)? Did the snapshot PNGs show a real line (step 6)?
+7. Report back: did steps 1-2 work with zero friction from the docs alone? Did the gizmo line
+   actually render live (step 4's direct answer)? Did the snapshot PNGs show a real line (step 5)?
    Any error, confusing field, or doc gap along the way? This is a first, broad pass - we'll follow
    up with more targeted checks based on whatever this round finds.
 ```
@@ -358,6 +359,15 @@ Working notes, not yet folded into the Change Log below — done once the round 
 
 ## Change Log
 
+- 2026-08-09 12:03 — **T30's relay prompt corrected before the team had a chance to act on the flawed
+  version.** The first draft assumed `first project` had no existing gameplay (based on a shallow
+  folder-listing check, not actually reading its contents) and asked the team to build a throwaway
+  test - a cube moving in a loop. Direct user correction: `first project` already has a real
+  flight/combat game (`BeanController.cs`, `Bullet.cs`, `ExplosionFireball.cs`,
+  `EnvironmentHazard.cs`, `PropellerSpin.cs` - confirmed by actually reading `Assets/Scripts/` this
+  time), and dictating a new test for someone else's project directly violates the Bring-Your-Own-
+  Test Protocol (`DESIGN.md` Sec 12) this project already has standing. Corrected to ask the team to
+  attach Beans to their own existing gameplay and run it unmodified, same as every prior relay round.
 - 2026-08-09 11:58 — **Added T30: a fourth test project (`first project`), install from the real
   public GitHub URL, specifically to get an independent, first-hand answer on T05** after this
   session's own attempts and a secondhand screenshot both proved inconclusive. Relay prompt written
