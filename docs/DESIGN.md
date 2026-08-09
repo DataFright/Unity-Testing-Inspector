@@ -554,6 +554,17 @@ was removed rather than risk another broken run. Reverted back to the last confi
 confirmed stable. Worth revisiting later with `modules`/`build-targets` explicitly scoped down, but
 not attempted blind.
 
+**Corroborated afterward via the action's own issue tracker, not just this repo's own bad luck:**
+[buildalon/unity-setup#55](https://github.com/buildalon/unity-setup/issues/55) is another user
+hitting a real CI failure specifically when `cache-installation: true` was enabled (a different
+symptom - a log-file-lock timeout during a Unity export - but the same trigger: worked with caching
+off, broke with it on) - closed **"not planned,"** never fixed by the maintainer. The original
+feature request, [#12](https://github.com/buildalon/unity-setup/issues/12), even has its own author
+admitting they weren't sure exactly which directories needed caching to reliably preserve a working
+Unity install. Reasonable read: `cache-installation` is a genuinely unreliable feature of this
+action right now, not something specific to this repo's configuration - reinforces reverting it
+rather than continuing to chase a fix.
+
 **Real Unity license, activated live each run — not a portable file, and this took two attempts to
 get right.** First attempt used `game-ci/unity-test-runner` with a `UNITY_LICENSE` secret holding
 an exported license file (the classic, widely-documented approach). That failed a due-diligence
