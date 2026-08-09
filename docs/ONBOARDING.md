@@ -151,14 +151,13 @@ checkout.)
 - `TESTS/PlayMode/` exists but is empty — everything Play-Mode-dependent (gizmo rendering,
   snapshot capture, mouse tracking, physics-tick timing) is currently verified only through ad
   hoc live sessions, not a repeatable automated suite. CI (below) only covers EditMode.
-- CI exists (`.github/workflows/tests.yml`) but hasn't actually run yet — it needs `UNITY_EMAIL`/
-  `UNITY_PASSWORD` added as GitHub Actions secrets by the repo owner first (a live-login approach,
-  not a portable license file — a first attempt at a file-based approach turned out to be
-  machine-bound and had to be scrapped, see `docs/DESIGN.md` §12's Change Log). Check §12 for
-  current status before assuming it's green, and be aware Unity's licensing infrastructure has
-  changed more than once recently — don't trust CI-setup instructions from a prior session (or
-  from general Unity CI documentation found online) without re-verifying against what Unity's
-  licensing site/client actually does today.
+- CI (`.github/workflows/tests.yml`) is confirmed working — runs the EditMode suite automatically
+  on every push to `main`, real green pass verified 2026-08-08 (see `docs/DESIGN.md` §12's Change
+  Log for the full history, including four real bugs it took to get there). If a future CI run
+  fails, don't assume it's the same category of issue as before — Unity's licensing
+  infrastructure and these third-party CI actions have both changed more than once already in this
+  project's short history; re-verify against current reality rather than trusting old instructions
+  (this project's own or general Unity CI docs found online).
 - `extras` (`BeanSample`) is numeric-only (`Dictionary<string, float>`) — awkward for categorical
   state like an AI's patrol/chase/attack.
 
@@ -177,3 +176,6 @@ checkout.)
 - 2026-08-08 20:34 — Updated once more same day: the CI project shell moved from `.github/ci-project/`
   to `CI~/` after the first live CI run found the CI action's glob doesn't see dot-prefixed
   directories (see `docs/DESIGN.md` §4/§12's Change Log). File map corrected.
+- 2026-08-08 22:50 — Updated once more same day: CI is now confirmed fully working (real green
+  pass, not just "exists") after three more real bugs were found and fixed past the dot-folder one.
+  Known Gaps section corrected to stop describing it as unverified.

@@ -1,6 +1,8 @@
 This is **CI scaffolding only** — not a game, not a demo, not a sample. It exists purely so
 GitHub Actions can point Unity's headless Test Runner at a real project and run UTI's EditMode
-suite (`TESTS/EditMode/`) on push to `main`. See `.github/workflows/tests.yml`.
+suite (`TESTS/EditMode/`) on push to `main`. See `.github/workflows/tests.yml`. Confirmed working
+live 2026-08-08 (`Status: Success`) after four real bugs found and fixed — see
+`docs/DESIGN.md` §12's Change Log for the full history if something looks broken again later.
 
 **Named `CI~` deliberately** (not `.github/ci-project`, where this originally lived) — two real
 problems, found the hard way on the first live CI run, forced the move:

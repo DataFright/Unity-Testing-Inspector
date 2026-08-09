@@ -224,6 +224,13 @@ remembering, not a plan. Nothing here should be started without a real design pa
 
 ## Change Log
 
+- 2026-08-08 22:50 — **CI confirmed fully green — first real, verified pass end to end.** Four
+  distinct real bugs found and fixed to get here (a dot-prefixed folder hiding from a glob, an
+  open upstream bug on Ubuntu, a Windows stdout-handle quirk hanging the process, and Unity
+  requiring an `Assets/` folder even when empty), each root-caused from real evidence rather than
+  guessed at — full blow-by-blow in `DESIGN.md` §12's Change Log. `Status: Success`, 12m 32s, real
+  UTI tests actually running and completing. CI now runs the EditMode suite automatically on every
+  push to `main`.
 - 2026-08-08 20:38 — **CI's first live run found and fixed a real bug.** License activation
   (`UNITY_EMAIL`/`UNITY_PASSWORD` via `buildalon/activate-unity-license`) worked on the first try.
   The next step failed: `buildalon/unity-setup`'s own version-detection glob silently skips

@@ -575,9 +575,16 @@ upstream (`buildalon/unity-setup` issue #57) — newer Unity Hub `.deb` packages
 `/usr/bin/unityhub`, but the action's code still hardcodes the older `/opt/unityhub/unityhub` path.
 **Fixed** by switching the workflow's `runs-on` from `ubuntu-latest` to `windows-latest` — this bug
 is Linux-path-specific and doesn't exist on Windows; no cost tradeoff since public repos get
-unlimited free GitHub Actions minutes on any OS. Not yet re-verified as of the day this was
-written — same "don't claim Pass before a real report" discipline as everything else this project
-tracks.
+unlimited free GitHub Actions minutes on any OS.
+
+**Two more real bugs turned up before the first actually-green run** (see the Change Log's most
+recent entries for the full writeup of each): `-logFile -` hanging indefinitely on Windows
+(Windows apps have no real stdout handle by default) fixed by writing to a real file instead; and
+Unity refusing to accept any project directory lacking an `Assets/` folder, even completely empty,
+fixed by adding one to `CI~/`. **CI is now confirmed green** — a real, verified pass (`Status:
+Success`, 12m 32s, one harmless Node-version warning), not assumed from the code. This is the
+current, working state; the Change Log above has the full blow-by-blow of what it took to get
+here.
 
 ### The Bring-Your-Own-Test Protocol (formalized 2026-08-08, from a real `project 2` round)
 
@@ -769,6 +776,23 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-08 22:50 — **CI's fifth live run: fully green, first confirmed pass end to end.**
+  `Status: Success`, 12m 32s total, one harmless warning (Node.js 20 deprecation notice from the
+  actions themselves, no functional effect). Verified as a real pass, not assumed: the log shows
+  Unity finding `ProjectVersion.txt` and opening `CI~/` cleanly, real compilation of UTI's own
+  assemblies, and named UTI tests actually running and completing (`BeanArtifactPathsTests`,
+  `BeanBufferTests`, `BeanConfigTests`, `BeanLoggerTests`, ...) - including two tests whose whole
+  point is deliberately triggering a broken output (`Close_OneOutputThrowsOnClose_...`,
+  `HandleSample_OneOutputThrowsOnWrite_...`) and confirming UTI logs a warning and keeps going
+  instead of crashing, exactly as designed (see §14/`TESTS/ErrorHandlingTracker.md` EH02-EH04) -
+  their warning-looking log lines are the test passing, not a problem. License activated and
+  deactivated cleanly, results artifact uploaded (38.4 KB). Four real, distinct bugs found and
+  fixed to get here, each root-caused via actual evidence (a real error message, a real issue
+  tracker, or a real local reproduction) rather than guessed at, in order: `.github/`'s dot-prefix
+  breaking `unity-setup`'s glob → `CI~/`; an open upstream Ubuntu bug in `unity-setup` →
+  `windows-latest`; `-logFile -` hanging on Windows (no real stdout handle) → a real log file path;
+  and Unity refusing any project directory without an `Assets/` folder, even empty → added one.
+  CI now runs the EditMode suite automatically on every push to `main`.
 - 2026-08-08 22:25 — **CI's fourth live run found a fourth real bug: `CI~/` needs an `Assets/`
   folder, even empty.** The `-logFile` fix worked - this run failed fast (seconds, not a hang)
   with a clear Unity error instead: `Couldn't set project path to: D:/.../CI~`. Root-caused via
