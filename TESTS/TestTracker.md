@@ -301,7 +301,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
 
 ## Change Log
 
-- 2026-08-08 — **T29 added: JSON Lines export built and verified live, resolving a prior session's
+- 2026-08-08 16:42 — **T29 added: JSON Lines export built and verified live, resolving a prior session's
   paused-mid-task open item.** A previous session left `JsonlBeanOutput`/`BeanOutputTargets.Json`/
   `BeanConfig.DefaultOutputTargets` written but unverified, flagged in `HANDOFF.md` as possibly
   spamming `project 2`'s console with a compile error. Checked directly this session: clean
@@ -310,7 +310,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   Once verified, extracted a shared `BeanFileOutputBase` from `CsvBeanOutput`/`JsonlBeanOutput`'s
   now-duplicated `StreamWriter` lifecycle code; re-ran the same 97/97 suite with 0 regressions. See
   T29's row and `DESIGN.md`'s Change Log for full detail.
-- 2026-08-08 — **T05 third attempt, still inconclusive — but for a new reason.** With real Play
+- 2026-08-08 16:05 — **T05 third attempt, still inconclusive — but for a new reason.** With real Play
   Mode access confirmed working (see T12/T14), tried to finally get a live screenshot of
   `BeanVisualizer`'s gizmo trail in `project 2`. Captures came back genuinely live/non-stale for the
   first time ever (unlike the two prior stale-tooling failures), but a runtime-created test cube
@@ -318,7 +318,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   appears to periodically reset/reload live scene state during Play, independent of
   `EditorApplication.isPlaying` (which stayed `true` throughout). No leftover state in `project 2`
   afterward. Recommends retrying in `little wings` next time. See T05's row for full detail.
-- 2026-08-08 — **T08 repurposed — no more building our own demo/sample Unity scenes.** Proposed
+- 2026-08-08 15:30 — **T08 repurposed — no more building our own demo/sample Unity scenes.** Proposed
   building `Samples~/` car/NPC/player demo scenes to close T08; corrected directly by the user:
   building a new demo/sample project purely to test/showcase UTI is out of scope, costs real
   time/tokens for low verification value, and contradicts the Bring-Your-Own-Test Protocol's whole
@@ -327,7 +327,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   consuming project, waiting on opportunity rather than needing dedicated action. Old demo-scene
   idea moved to `PROJECT_OVERVIEW.md`'s Dream To-Do section; standing rule written into `CLAUDE.md`
   and memory so this doesn't get re-proposed.
-- 2026-08-08 — **T12 and T14 fully closed, live-verified in `project 2` — the last two Play-Mode-
+- 2026-08-08 14:55 — **T12 and T14 fully closed, live-verified in `project 2` — the last two Play-Mode-
   only gaps.** This session's Unity MCP connection unexpectedly supports real Play Mode entry
   (`EditorApplication.EnterPlaymode()`) and `GameObject.SetActive`, both hard-blocked in every prior
   session. T12: a Rigidbody-driven test object with `CaptureMode=EveryFixedUpdate` produced 732
@@ -339,7 +339,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   *after* `AddComponent`, so `OnEnable` fired once already with default settings) - caught and
   corrected before trusting the result. All test objects destroyed afterward; full EditMode suite
   re-confirmed green (105/105, fresh timestamp) with no regressions. See T12/T14 rows above.
-- 2026-08-08 — **T27 complete, T28 found/root-caused/fixed same day.** The `project 2` team's
+- 2026-08-08 14:10 — **T27 complete, T28 found/root-caused/fixed same day.** The `project 2` team's
   fresh-install round reported two real findings from a genuine multi-angle capture (real 9m jump
   path, tracking left running well past the interesting part): no visible path line in any angle,
   and `Auto Frame Camera` tight-zooming on just the final position. Confirmed live by this session
@@ -350,20 +350,20 @@ Working notes, not yet folded into the Change Log below — done once the round 
   0). Fixed with a new `IsBufferAtCapacity()` pure check + a `Debug.LogWarning` in
   `CaptureSnapshot()` so this failure mode is visible instead of silent going forward; 87/87
   EditMode tests still green after the fix (up from 84).
-- 2026-08-08 — T27 refined per user request: instead of an arbitrary post-reinstall walkthrough,
+- 2026-08-08 13:35 — T27 refined per user request: instead of an arbitrary post-reinstall walkthrough,
   paired directly with the `project 2` team's own existing jump test (blue box, then yellow, then
   red) run live in Play Mode with all four Beans attached. Doubles as the first real chance at
   T05/T06 (`BeanVisualizer`'s live Scene-view gizmo actually tracked box-to-box while watching, not
   just inferred from sample data) and a multi-angle capture test on a genuinely dynamic multi-box
   path, rather than this session's own synthetic near-stationary repro.
-- 2026-08-08 — Added T27, a full uninstall + fresh reinstall round handed directly to the
+- 2026-08-08 13:10 — Added T27, a full uninstall + fresh reinstall round handed directly to the
   `project 2` team rather than run by this session — the point is a genuine first-time-user
   `USAGE.md` walkthrough, which a session that already knows how UTI works can't fairly simulate.
   Confirmed via this session's live Unity MCP connection that `project 2`'s real `Player`
   GameObject already carries `BeanTracker`/`BeanLogger`/`BeanSnapshotExporter` from earlier rounds,
   so the instructions call out removing those first (before uninstalling the package) to avoid
   leaving "missing script" placeholders behind.
-- 2026-08-08 — **Bug report from `project 2` team: CS0104 ambiguous `Object` reference, second
+- 2026-08-08 12:40 — **Bug report from `project 2` team: CS0104 ambiguous `Object` reference, second
   occurrence.** `TESTS/EditMode/BeanTrackerTests.cs` and `BeanLoggerTests.cs` both call bare
   `Object.DestroyImmediate(go)` while also having `using System;` (needed for `Guid`/
   `InvalidOperationException`/`DateTime` in this round's new tests) alongside `using UnityEngine;` —
@@ -382,7 +382,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   test file gains `using System;` alongside existing bare `Object.` calls). Tracked going forward as
   `TESTS/ErrorHandlingTracker.md` EH09, per the user's request to track error-handling/compile-safety
   issues with the same rigor as feature tests, not just re-fixed reactively a third time.
-- 2026-08-08 — **Live verification round via this session's own Unity MCP connection, directly
+- 2026-08-08 11:55 — **Live verification round via this session's own Unity MCP connection, directly
   attached to `project 2`** (not `little wings`, and not read-only-only like prior sessions — real
   script execution). Closed almost this entire round's punch list without a relay: full EditMode
   suite 84/84 passed (cross-checked against `TestResults.xml` directly, re-confirmed fresh after a
@@ -400,7 +400,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   `MethodInfo`, etc.) are sandboxed off (worked around via public-only reflection), and both
   entering Play Mode and `GameObject.SetActive` toggling are blocked as unsupported "user
   interaction" — these two remain the only genuinely open items (T12/T14's Play Mode halves).
-- 2026-08-08 — Integrity pass: added T25, fault isolation at every real system boundary UTI
+- 2026-08-08 11:10 — Integrity pass: added T25, fault isolation at every real system boundary UTI
   touches. `BeanTracker.Capture()` isolates a throwing `CustomCapture` delegate (logs a warning,
   keeps capturing with null extras rather than silently dropping the sample and everything
   downstream of it). `BeanLogger.Open()`/`HandleSample()`/`Close()` isolate each `IBeanOutput`
@@ -409,7 +409,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   `BeanSnapshotExporter`'s per-angle write loop (needs a live Camera) and `BeanConfig.Load()`'s
   locked-file handling (touches the real project-root config path) — see `DESIGN.md` §14 for the
   full writeup and reasoning on why those two stay code-reviewed rather than unit-tested.
-- 2026-08-08 — Closed most of this round's punch list in code, **none live-verified yet** (see the
+- 2026-08-08 10:35 — Closed most of this round's punch list in code, **none live-verified yet** (see the
   updated "Next round" relay prompt above): T11 (`CustomCapture`/extras end-to-end), T12
   (`EveryFixedUpdate` via new `SimulateFixedFrame()`), T14 (decided + built
   `BeanLogger.AppendAcrossReuse`), T15 (EditMode half — multi-Bean buffer independence), and T23
@@ -423,7 +423,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   found in the process (`USAGE.md` §8 still described the reverted `ScriptableObject`-based
   `BeanConfig`) and copying the corrected versions directly into both `little wings` and
   `project 2`.
-- 2026-08-08 — Full closing report from `project 2`. **T07 — Pass** (package installed, resolved
+- 2026-08-08 09:50 — Full closing report from `project 2`. **T07 — Pass** (package installed, resolved
   cleanly once the CS0104 regression below was fixed). **The actual game bug — not a UTI test row,
   but the real payoff:** `project 2`'s own `JumpTriggerDistance` (1.3m) was smaller than the real,
   physically-forced walking-stop distance against a box (`1m` box half-depth + `0.35m`
@@ -455,7 +455,7 @@ Working notes, not yet folded into the Change Log below — done once the round 
   per user request based on this session: multi-angle snapshots (grouped/labeled naming), and
   `BeanConfig` covering snapshot-quality settings like `MinFramingRadius` (would directly address
   T23). Neither built yet.
-- 2026-08-08 — `project 2` round actually underway (T07/T08/T18/T19/T21/T22 in progress there).
+- 2026-08-08 09:05 — `project 2` round actually underway (T07/T08/T18/T19/T21/T22 in progress there).
   Found and fixed a **real regression in UTI's own test source**, never caught because nothing
   recompiled `BeanSnapshotExporterTests.cs` after the `BeanConfig` `ApplyConfigDefaults` tests
   were added: `CS0104`, bare `Object.DestroyImmediate(go)` is ambiguous once a file has both

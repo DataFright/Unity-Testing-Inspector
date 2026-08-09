@@ -564,10 +564,20 @@ to confirm the Unity version, and generic (non-Unity-aware) glob implementations
 dot-prefixed directories by default — the project shell lived at `.github/ci-project/` at the
 time, so the file was never reachable no matter how correct everything else was. **Fixed** by
 moving the whole shell to `CI~/` (see §4) — same UPM "don't import this" convention as `Samples~/`,
-but visible to a plain glob unlike a dot-prefixed folder. Not yet re-verified as of the day this
-was written — one more real run is still needed to confirm the move actually fixes it and nothing
-else is wrong, same "don't claim Pass before a real report" discipline as everything else this
-project tracks.
+but visible to a plain glob unlike a dot-prefixed folder.
+
+**Second live run, same day: license and `CI~/` both confirmed working, found a third-party bug
+next.** With `CI~/` in place, `unity-setup` found `ProjectVersion.txt` fine and license activation
+still worked — the run then failed inside `unity-setup`'s Unity Hub install step with `Error:
+ENOENT: no such file or directory, access '/opt/unityhub/unityhub'`. Checked against the action's
+own issue tracker before changing anything here: this is a known, currently open, unfixed bug
+upstream (`buildalon/unity-setup` issue #57) — newer Unity Hub `.deb` packages on Ubuntu install to
+`/usr/bin/unityhub`, but the action's code still hardcodes the older `/opt/unityhub/unityhub` path.
+**Fixed** by switching the workflow's `runs-on` from `ubuntu-latest` to `windows-latest` — this bug
+is Linux-path-specific and doesn't exist on Windows; no cost tradeoff since public repos get
+unlimited free GitHub Actions minutes on any OS. Not yet re-verified as of the day this was
+written — same "don't claim Pass before a real report" discipline as everything else this project
+tracks.
 
 ### The Bring-Your-Own-Test Protocol (formalized 2026-08-08, from a real `project 2` round)
 
@@ -759,14 +769,25 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
-- 2026-08-08 — **CI's first live run found a real bug: `CI~/` moved from `.github/ci-project/`**
+- 2026-08-08 20:41 — **CI's second live run found a second real bug: switched runner OS from
+  Ubuntu to Windows** (see §12). License activation and the `CI~/` fix both worked — the next
+  failure was `buildalon/unity-setup`'s own `Error: ENOENT: no such file or directory, access
+  '/opt/unityhub/unityhub'`, a currently-open, unresolved upstream bug
+  (github.com/buildalon/unity-setup/issues/57): newer Unity Hub `.deb` packages install to
+  `/usr/bin/unityhub`, but that action still hardcodes checking the old `/opt/unityhub/unityhub`
+  path on Ubuntu runners. Not something wrong in this repo's own config — confirmed via the
+  action's own issue tracker before touching anything here. **Fixed** by switching `runs-on` from
+  `ubuntu-latest` to `windows-latest` — this bug is Linux-path-specific, so it doesn't exist on
+  Windows, and since this repo is public, GitHub gives unlimited free runner minutes on any OS
+  (no cost tradeoff). Not yet re-verified with another live run.
+- 2026-08-08 20:35 — **CI's first live run found a real bug: `CI~/` moved from `.github/ci-project/`**
   (see §4/§12). License activation itself worked on the first try with `UNITY_EMAIL`/
   `UNITY_PASSWORD` — the failure was one step later, `buildalon/unity-setup`'s own
   `ProjectVersion.txt`-detection glob silently skipping the dot-prefixed `.github/` directory the
   project shell lived in. Moved to a tilde-suffixed name instead (`CI~/`, matching `Samples~/`'s
   existing UPM convention), which keeps the same "don't import into a consuming project" property
   while staying visible to a generic glob. Not yet re-verified with another real run.
-- 2026-08-08 — **CI's license activation approach corrected before its first real run** (see §12).
+- 2026-08-08 19:50 — **CI's license activation approach corrected before its first real run** (see §12).
   The original plan (`game-ci/unity-test-runner` + a `UNITY_LICENSE` secret holding an exported
   license file) hit two dead ends during due diligence, neither found by reading code — both found
   by actually trying the real-world steps and checking the result: (1) `license.unity3d.com/manual`
@@ -777,7 +798,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   live each run via `UNITY_EMAIL`/`UNITY_PASSWORD` secrets instead of a portable file - the
   workflow trigger was narrowed to push-only (not `pull_request`) specifically because this means a
   real account password is now a repo secret, not just a license blob.
-- 2026-08-08 — **Added CI (§12) and `docs/ONBOARDING.md`, following a project review.** New
+- 2026-08-08 19:05 — **Added CI (§12) and `docs/ONBOARDING.md`, following a project review.** New
   `.github/workflows/tests.yml` + `.github/ci-project/` (a minimal, scrubbed Unity project shell —
   see §4) run the EditMode suite headlessly on push/PR; not yet exercised live (needs a Unity
   license secret added to the repo first). `ci-project/ProjectSettings` started as a copy of a real
@@ -786,7 +807,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   full-folder string sweep before anything was written. Also added `docs/ONBOARDING.md`, a short
   stable map for a fresh agent session, distinct from this file's deep architecture and
   `HANDOFF.md`'s ephemeral state.
-- 2026-08-08 — **JSON Lines export shipped and verified live, plus a duplication refactor.** New
+- 2026-08-08 16:40 — **JSON Lines export shipped and verified live, plus a duplication refactor.** New
   `JsonlBeanOutput` (`IBeanOutput`), wired into `BeanLogger` as `BeanOutputTargets.Json` alongside
   `Console`/`Csv`; `BeanConfig` gained `DefaultOutputTargets` and `BeanLogger` gained its first
   `Reset()`/`ApplyConfigDefaults()` pair to consume it (§8.2/§8.7). `ResolveFilePath` generalized
@@ -802,21 +823,21 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   and the CSV+JSON collision fallback). This closes the "unverified, suspected of spamming the
   console" open item from a prior session's `HANDOFF.md` — it wasn't the JSON code; both compiled
   clean the whole time.
-- 2026-08-08 — **T08 descoped from "build demo scenes" to "use existing projects" — standing rule
+- 2026-08-08 16:10 — **T08 descoped from "build demo scenes" to "use existing projects" — standing rule
   added.** Proposed building `Samples~/` car/NPC/player demo scenes; corrected directly by the user:
   building a new demo/sample Unity project purely to test/showcase UTI is out of scope (real
   time/token cost, low verification value, contradicts the Bring-Your-Own-Test Protocol's whole
   premise). §4/§9/§12 updated to reflect this; `TESTS/TestTracker.md` T08 repurposed; the old
   demo-scene idea moved to `PROJECT_OVERVIEW.md`'s Dream To-Do section; rule also written into
   `CLAUDE.md` and session memory so it isn't re-proposed.
-- 2026-08-08 — **T12/T14 Play Mode gaps closed live** (§13's last two open robustness rows). This
+- 2026-08-08 15:45 — **T12/T14 Play Mode gaps closed live** (§13's last two open robustness rows). This
   session's Unity MCP connection turned out to support real Play Mode entry and `GameObject
   .SetActive`, both hard-blocked in every prior session — see `TESTS/TestTracker.md`'s Change Log
   for the full write-up (732 fixed-tick samples at exactly `Time.fixedDeltaTime` for T12; a real
   2-cycle `SetActive` pooling test with matching truncate/append CSV row counts for T14). No
   `Runtime/` source changes — this was pure verification, both behaviors already matched their
   documented design. EditMode suite re-confirmed 105/105 with no regressions afterward.
-- 2026-08-08 — **Went public.** Repo created at github.com/DataFright/Unity-Testing-Inspector (MIT),
+- 2026-08-08 15:20 — **Went public.** Repo created at github.com/DataFright/Unity-Testing-Inspector (MIT),
   first commit pushed. This file moved from the package root to `docs/DESIGN.md` as part of a
   cleanup for the public repo — root now holds only `README.md` (short pitch + fresh-clone install
   guide, replacing the old hardcoded-local-machine `file:` instructions with the real Package
@@ -826,7 +847,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   path updated to match (`docs/<filename>` instead of the package root); verified live via
   `project 2`'s own Unity MCP connection that all three docs resolve correctly at the new location
   with valid content, and the old root-level path is genuinely empty (no stale duplicates).
-- 2026-08-08 — **T28 (§13): found live by the `project 2` team, root-caused live by this session,
+- 2026-08-08 14:50 — **T28 (§13): found live by the `project 2` team, root-caused live by this session,
   fixed same day.** `BeanSnapshotExporter.CaptureSnapshot()` reads the live `BeanTracker.Samples`
   ring buffer, not the CSV — a long idle tail after real movement finished can silently evict the
   entire real path from that fixed-capacity buffer before a snapshot happens, explaining both an
@@ -835,7 +856,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   + 3000 stationary → live buffer Z-span dropped to exactly 0). Fixed with a new pure
   `IsBufferAtCapacity()` + a `Debug.LogWarning` in `CaptureSnapshot()`. See §13 and
   `TESTS/TestTracker.md` T28 for full detail.
-- 2026-08-08 — Rewrote the stale §12 (Verification Strategy — still described a no-tooling-at-all
+- 2026-08-08 13:15 — Rewrote the stale §12 (Verification Strategy — still described a no-tooling-at-all
   world) and formalized **the Bring-Your-Own-Test Protocol**: the standard way to verify UTI in any
   consuming project going forward — find a test that already exists and already passes, add the
   relevant Beans to what it exercises, run it completely unmodified, report what UTI produced.
@@ -846,7 +867,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   harness instead — which immediately introduced a new bug the original test didn't have. Not a UTI
   defect; the actual fix is procedural (have a human, or whichever agent can enter Play Mode, run
   the real existing test) — this section exists so future rounds don't repeat the detour.
-- 2026-08-08 — New `TESTS/ErrorHandlingTracker.md` (EH01–EH09), tracking every guarded system
+- 2026-08-08 12:55 — New `TESTS/ErrorHandlingTracker.md` (EH01–EH09), tracking every guarded system
   boundary at-a-glance, same rigor as `TESTS/TestTracker.md` — per explicit request, cross-referenced
   from §14. Also: a bug report from the `project 2` team flagged a second occurrence of the
   ambiguous-`Object`-reference `CS0104` class (`BeanTrackerTests.cs`/`BeanLoggerTests.cs`, both newly
@@ -855,7 +876,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   one-off fix. `CLAUDE.md`'s Unity MCP note also corrected — it still described the old
   read-only/`little wings`-only limitation, now stale given this session's direct `project 2`
   execution access (see the entry below).
-- 2026-08-08 — **Live verification round via this session's own Unity MCP connection, attached
+- 2026-08-08 12:20 — **Live verification round via this session's own Unity MCP connection, attached
   directly to `project 2`** (a real capability upgrade from every prior round's read-only/relay-only
   access - confirmed by testing, not assumed). Full EditMode suite: 84/84 passed, cross-checked
   against `TestResults.xml` with fresh timestamps to rule out a stale result. T22's `Reset()`-hook
@@ -868,7 +889,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   by testing them directly: named `System.Reflection` types are sandboxed off (public-only
   reflection still works), and both Play Mode entry and `GameObject.SetActive` are blocked as
   unsupported "user interaction." Full detail in `TESTS/TestTracker.md`'s Change Log.
-- 2026-08-08 — Added a new §14, Error Handling & Fault Isolation: guarded every real system
+- 2026-08-08 11:40 — Added a new §14, Error Handling & Fault Isolation: guarded every real system
   boundary that previously had no handling at all. `BeanTracker.Capture()` now isolates a throwing
   `CustomCapture` delegate (logs a warning, keeps capturing without extras rather than silently
   corrupting the whole recording). `BeanLogger.Open()`/`HandleSample()`/`Close()` now isolate each
@@ -882,7 +903,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   (caller code, disk I/O, externally-edited config) per CLAUDE.md's "validate at boundaries, trust
   internal invariants" guidance - `BeanBuffer`'s existing constructor validation, for example, was
   left untouched since a bad capacity there is a real programming error, not a runtime boundary.
-- 2026-08-08 — Closed most of the `project 2` round's punch list in one pass (see §8.4/§8.7/§13
+- 2026-08-08 10:55 — Closed most of the `project 2` round's punch list in one pass (see §8.4/§8.7/§13
   above for full detail; all code-complete and unit-tested, **none live-verified yet** — see the
   updated relay prompt in `TESTS/TestTracker.md`): T23 fixed (`MinFramingRadius` now a per-Bean
   field, defaultable via `BeanConfig.DefaultMinFramingRadius`); multi-angle snapshots built
@@ -898,7 +919,7 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
   fixing a real staleness bug found in the process (`USAGE.md` §8 still described the old
   `ScriptableObject`-based `BeanConfig`, contradicting `CONFIG.md`'s already-correct plain-text
   description) — and refreshed both `little wings`' and `project 2`'s copies.
-- 2026-08-08 — First full closing report from `project 2` — full story in `TESTS/TestTracker.md`'s
+- 2026-08-08 09:30 — First full closing report from `project 2` — full story in `TESTS/TestTracker.md`'s
   Change Log. Headline result: UTI's CSV pinned a real game bug (a jump-trigger distance that was
   geometrically unreachable given the player's own collision radius) to five decimal places,
   something the dev said they wouldn't have found from behavior alone — the clearest real-world

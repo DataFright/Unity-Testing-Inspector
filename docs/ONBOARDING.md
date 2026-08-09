@@ -164,16 +164,16 @@ checkout.)
 
 ## Change Log
 
-- 2026-08-08 — Created, following a full project review that flagged this as a real gap: new
+- 2026-08-08 17:15 — Created, following a full project review that flagged this as a real gap: new
   agent sessions had no single fast-orientation doc distinct from `CLAUDE.md` (rules),
   `HANDOFF.md` (ephemeral session state), and `DESIGN.md` (deep architecture).
-- 2026-08-08 — Updated same day for CI's addition (`.github/workflows/tests.yml` +
+- 2026-08-08 18:40 — Updated same day for CI's addition (`.github/workflows/tests.yml` +
   `.github/ci-project/` — see `docs/DESIGN.md` §12): file map and Known Gaps section both
   reflect that CI now exists but hasn't executed yet (needs Unity account secrets).
-- 2026-08-08 — Updated again same day after CI's license approach was corrected mid-setup (a
+- 2026-08-08 19:50 — Updated again same day after CI's license approach was corrected mid-setup (a
   file-based license turned out to be machine-bound — see `docs/DESIGN.md` §12's Change Log);
   Known Gaps now names the actual secrets needed and flags that Unity's licensing infrastructure
   itself is a moving target worth re-verifying, not just UTI's own tooling.
-- 2026-08-08 — Updated once more same day: the CI project shell moved from `.github/ci-project/`
+- 2026-08-08 20:34 — Updated once more same day: the CI project shell moved from `.github/ci-project/`
   to `CI~/` after the first live CI run found the CI action's glob doesn't see dot-prefixed
   directories (see `docs/DESIGN.md` §4/§12's Change Log). File map corrected.

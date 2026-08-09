@@ -14,7 +14,11 @@ on:
 jobs:
   editmode-tests:
     name: EditMode tests
-    runs-on: ubuntu-latest
+    # Windows, not Ubuntu: buildalon/unity-setup has an open, unresolved bug on Ubuntu runners
+    # (checks a hardcoded /opt/unityhub/unityhub path that newer Unity Hub .deb packages don't
+    # use - https://github.com/buildalon/unity-setup/issues/57). This repo is public, so GitHub
+    # gives unlimited free minutes on any OS - no cost tradeoff either way.
+    runs-on: windows-latest
     steps:
       - name: Checkout UTI
         uses: actions/checkout@v4

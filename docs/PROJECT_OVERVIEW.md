@@ -224,14 +224,14 @@ remembering, not a plan. Nothing here should be started without a real design pa
 
 ## Change Log
 
-- 2026-08-08 — **CI's first live run found and fixed a real bug.** License activation
+- 2026-08-08 20:38 — **CI's first live run found and fixed a real bug.** License activation
   (`UNITY_EMAIL`/`UNITY_PASSWORD` via `buildalon/activate-unity-license`) worked on the first try.
   The next step failed: `buildalon/unity-setup`'s own version-detection glob silently skips
   dot-prefixed directories, so it couldn't find `ProjectVersion.txt` while the CI project shell
   lived at `.github/ci-project/`. Moved to `CI~/` (tilde-suffixed, same UPM "don't import this"
   convention `Samples~/` already uses, but visible to a plain glob) — see `DESIGN.md` §4/§12's
   Change Log for the full root-cause writeup. Not yet re-verified with another live run.
-- 2026-08-08 — **Project review pass, then follow-up work kicked off.** A full outside review of
+- 2026-08-08 19:00 — **Project review pass, then follow-up work kicked off.** A full outside review of
   the codebase, file structure, docs, and test/error-handling coverage (code quality strong,
   decoupling and testable/untestable splits real, error-boundary discipline unusually consistent
   for a project this size; weaknesses: no CI, `TESTS/PlayMode/` unpopulated so anything
@@ -249,38 +249,38 @@ remembering, not a plan. Nothing here should be started without a real design pa
   and wouldn't validate on GitHub's runners — see `DESIGN.md` §12's Change Log for the full story.
   Remaining items (closing three "code-reviewed only" error-handling rows, a few small code
   cleanups) tracked as session tasks, to be folded into this Change Log as they land.
-- 2026-08-08 — **JSON Lines export Roadmap item marked built and verified live** (moved from
+- 2026-08-08 16:35 — **JSON Lines export Roadmap item marked built and verified live** (moved from
   "Feature ideas" — see the Roadmap section above). Also extracted `BeanFileOutputBase`, a shared
   base class between `CsvBeanOutput` and `JsonlBeanOutput` once their `StreamWriter`-lifecycle code
   turned out to be identical. Verified in `project 2` via direct Unity MCP access: clean compile, 0
   console errors, 97/97 EditMode tests, both before and after the refactor. Full detail in
   `DESIGN.md`'s Change Log and `TESTS/TestTracker.md`.
-- 2026-08-08 — **Standing rule: never build our own demo/sample Unity projects to test UTI.**
+- 2026-08-08 16:05 — **Standing rule: never build our own demo/sample Unity projects to test UTI.**
   Proposed building `Samples~/` car/NPC/player demo scenes to close test-row T08; corrected
   directly: real time/token cost for low verification value, and contradicts the whole premise of
   the Bring-Your-Own-Test Protocol (`DESIGN.md` §12) — we're testers using real projects, not
   developers building our own. The demo-scene idea moved to this file's own Dream To-Do section
   above; T08 repurposed in `TESTS/TestTracker.md`; rule also written into `CLAUDE.md` and session
   memory.
-- 2026-08-08 — T12/T14 (§"Robustness fixes" in the Roadmap above) fully closed — the last two
+- 2026-08-08 15:40 — T12/T14 (§"Robustness fixes" in the Roadmap above) fully closed — the last two
   Play-Mode-only test gaps, live-verified in `project 2` after this session's Unity MCP connection
   turned out to support real Play Mode entry and `GameObject.SetActive` (both hard-blocked in every
   prior session). `EveryFixedUpdate` samples landed exactly on the physics tick; pooled-object
   `SetActive` reuse correctly truncated (default) and correctly accumulated (`AppendAcrossReuse`)
   across a real reuse cycle. Pure verification, no behavior changed. Full detail in
   `TESTS/TestTracker.md`'s Change Log.
-- 2026-08-08 — Sharpened the JSON export Feature idea (JSON Lines format, structured `extras` as
+- 2026-08-08 15:15 — Sharpened the JSON export Feature idea (JSON Lines format, structured `extras` as
   the real motivation) and added a new **Dream To-Do** section — bigger, further-out, not-MVP
   concepts distinct from the regular Roadmap — seeded with a 3D-explorable-scene-artifact idea per
   user request, deliberately not scoped or started.
-- 2026-08-08 — **Went public: repo created at github.com/DataFright/Unity-Testing-Inspector, MIT
+- 2026-08-08 14:45 — **Went public: repo created at github.com/DataFright/Unity-Testing-Inspector, MIT
   licensed, first commit pushed.** Reorganized the file structure for a real public repo: this file
   is the former `README.md`, renamed to `PROJECT_OVERVIEW.md` and moved into a new `docs/` folder
   alongside `DESIGN.md`, `HANDOFF.md`, and the three end-user docs — the root `README.md` is now a
   short public pitch + a real fresh-clone install guide (Package Manager git URL, replacing the old
   hardcoded local `file:` path that only ever worked on one machine). `BeanConfig
   .CopyEndUserDocsIfMissing()` updated to match (source path now `docs/<filename>`), verified live.
-- 2026-08-08 — **Real bug found by the `project 2` team's fresh-install round, root-caused live and
+- 2026-08-08 13:25 — **Real bug found by the `project 2` team's fresh-install round, root-caused live and
   fixed same day (T28, `TESTS/TestTracker.md`).** `BeanSnapshotExporter` frames/draws from the live
   sample buffer, not the CSV — a long idle tail after real movement finished can silently evict the
   entire recorded path from that fixed-capacity buffer before a snapshot happens, producing an
@@ -288,30 +288,30 @@ remembering, not a plan. Nothing here should be started without a real design pa
   Reproduced directly (not just theorized): 200 samples of real 9m movement + 3000 stationary
   samples dropped the live buffer's recorded span to exactly zero. Fixed with a console warning
   when this could be happening; docs updated with the symptom and fix.
-- 2026-08-08 — Noted a new Feature idea (a more dynamic/cinematic snapshot angle — a closer,
+- 2026-08-08 12:50 — Noted a new Feature idea (a more dynamic/cinematic snapshot angle — a closer,
   elevated chase-cam-style shot oriented toward where the tracked object is heading, distinct from
   the whole-path-fitting `Above`/`Side`/`Behind`/`Auto` built earlier the same day), from a real
   Scene-view reference screenshot the user shared. Per user request, not built.
-- 2026-08-08 — New `TESTS/ErrorHandlingTracker.md` tracks every guarded system boundary the same
+- 2026-08-08 12:15 — New `TESTS/ErrorHandlingTracker.md` tracks every guarded system boundary the same
   way `TESTS/TestTracker.md` tracks features. Also fixed a bug reported by the `project 2` team: a
   second occurrence of the ambiguous-`Object`-reference `CS0104` compile error (two test files
   needing `using System;` for this round's new tests) — already fixed as a side effect earlier the
   same session, confirmed via a full-repo sweep, tracked going forward instead of left reactive.
-- 2026-08-08 — First live-verified round: this session's Unity MCP connection turned out to be
+- 2026-08-08 11:35 — First live-verified round: this session's Unity MCP connection turned out to be
   attached directly to `project 2` with real script execution (not just relay/read-only access like
   every prior round). Closed almost this round's entire punch list for real — full 84/84 EditMode
   suite passed, T22/T23/T24 confirmed live (T23 with real before/after PNGs showing the close-up bug
   is genuinely fixed), and a brand-new bug (T26: leaked GameObjects from calling a capture outside
   Play Mode) was found and fixed by this same live testing. See `TESTS/TestTracker.md`'s Change Log
   for the full story, including what this connection can't do (Play Mode entry, `SetActive`).
-- 2026-08-08 — Integrity pass: guarded every real system boundary UTI touches with no crash-the-
+- 2026-08-08 10:50 — Integrity pass: guarded every real system boundary UTI touches with no crash-the-
   game risk left unhandled — a throwing `CustomCapture` delegate, a `BeanLogger` output that fails
   to open/write/close (disk full, permissions), a `BeanSnapshotExporter` multi-angle capture where
   one angle's file write fails, and a locked/unreadable `BeanConfig.txt`. Each now degrades
   gracefully (logs a warning, keeps everything else working) instead of propagating an unhandled
   exception into whatever Unity callback triggered it. New tests cover the testable cases
   (`BeanTracker`/`BeanLogger`); see `DESIGN.md` §14 for the full boundary-by-boundary writeup.
-- 2026-08-08 — Closed most of the punch list left by the `project 2` round below in one pass, all
+- 2026-08-08 10:20 — Closed most of the punch list left by the `project 2` round below in one pass, all
   code-complete and unit-tested but **not yet live-verified** (see `TESTS/TestTracker.md`'s updated
   relay prompt): T23 fixed (`MinFramingRadius` → `BeanConfig.DefaultMinFramingRadius`); multi-angle
   snapshots built (`CaptureAngles`: `Auto`/`Above`/`Side`/`Behind`, grouped naming settled); T11
@@ -325,7 +325,7 @@ remembering, not a plan. Nothing here should be started without a real design pa
   copies inside `little wings`, not in this package repo itself): `USAGE.md` §8 had gone stale,
   still describing the old `ScriptableObject`-based `BeanConfig` after it was rebuilt as a plain
   text file. All three docs refreshed in both `little wings` and `project 2`.
-- 2026-08-08 — First full closing report from `project 2` (see `TESTS/TestTracker.md` Change
+- 2026-08-08 09:25 — First full closing report from `project 2` (see `TESTS/TestTracker.md` Change
   Log for the complete story): UTI's CSV decisively pinned down a real game bug (a jump-trigger
   distance geometrically unreachable given the player's own collision radius) to five decimal
   places — the dev said directly they wouldn't have found it from behavior alone. Also surfaced a

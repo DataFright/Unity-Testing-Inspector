@@ -36,17 +36,17 @@ boundary) is deliberately left to fail loudly — see "Deliberately not guarded"
 
 ## Change Log
 
-- 2026-08-08 — No new row needed for `JsonlBeanOutput`: EH02/EH03/EH04 already guard every active
+- 2026-08-08 19:10 — No new row needed for `JsonlBeanOutput`: EH02/EH03/EH04 already guard every active
   `IBeanOutput`'s `Open()`/`Write()`/`Close()` generically (the try/catch loops in `BeanLogger`
   don't know or care what type the output is), so adding a second file-based output alongside
   `CsvBeanOutput` didn't add a new boundary, just another concrete type already covered by an
   existing one. Re-confirmed live 2026-08-08 as part of the JSON export verification pass (97/97
   EditMode suite, `project 2`) — see `TESTS/TestTracker.md` T29.
-- 2026-08-08 — Added EH10: `CaptureSnapshot()` now warns when the live sample buffer is at
+- 2026-08-08 13:40 — Added EH10: `CaptureSnapshot()` now warns when the live sample buffer is at
   capacity, closing a real bug the `project 2` team found live (T28, `TESTS/TestTracker.md`) — a
   long idle tail silently evicting the real recorded path before a snapshot happens. Root-caused
   and fixed same day, verified live via direct reproduction in `project 2`.
-- 2026-08-08 — Initial tracker created: EH01–EH08 for this session's fault-isolation pass (see
+- 2026-08-08 12:45 — Initial tracker created: EH01–EH08 for this session's fault-isolation pass (see
   `DESIGN.md` §14), EH09 for the CS0104 ambiguous-`Object`-reference bug class flagged in a bug
   report from the `project 2` team the same day. Companion to `TESTS/TestTracker.md`, added per
   explicit request to track error handling with the same rigor as tests.
