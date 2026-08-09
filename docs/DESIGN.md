@@ -201,6 +201,8 @@ No open questions remain blocking v1; anything new belongs here as it comes up (
 
 Also worth naming: this design directly resolves T05's verification deadlock too. T05 has been blocked three times not on UTI's own logic but on *external* screenshot tooling reading the Editor from outside (stale/cached captures across two different tools). A component that renders and saves its own PNG from inside Unity doesn't depend on that tooling at all — verifying T05 becomes "open the file `BeanSnapshotExporter` wrote and look at it," not "get some other tool to successfully screenshot Unity."
 
+**Added 2026-08-09 — `DrawPath()` takes an injectable `internal IGizmoDrawer` instead of calling `Gizmos.*` directly.** Found while reviewing T05's history that `OnDrawGizmos`'s actual draw-call logic (which segments, in what order, which color, decimation, point-spheres) had never itself been unit-tested — only its two pure helper functions (`SelectIndicesToDraw`, `ResolveColor`) were. The five live-capture attempts (see `TESTS/TestTracker.md`'s T05 notes) were all trying to visually confirm code whose own correctness had never actually been proven. `IGizmoDrawer` (real `Gizmos.*` wrapper for the live path, zero behavior change; a recording fake in tests) closes that gap — 5 new EditMode tests assert the exact draw-call sequence `DrawPath()` produces, run for real via a local Unity install matching CI's version and mutation-checked (a deliberately broken assertion was confirmed to actually fail before trusting a passing one). `Runtime/AssemblyInfo.cs` added for `InternalsVisibleTo("UTI.Tests")` to allow this. This proves `BeanVisualizer`'s own logic; it does not and cannot prove `Gizmos.DrawLine` renders visible pixels in a live Scene view — that half is still open, tracked in T05.
+
 ### 8.4 `BeanSnapshotExporter`
 
 **Fields:** `tracker` (auto-fetched like Logger/Visualizer), `captureCamera` (defaults to `Camera.main` if unset — deliberately reuses whatever camera a dev already trusts to show their scene correctly, rather than UTI inventing its own view), `pathColor`, `lineWidth`, `captureWidth`/`captureHeight` (render target resolution), `autoFrameCamera`, `dimensionMode` (enum `Auto`/`Force2D`/`Force3D`, **added 2026-08-07** — overrides the flat/2D-vs-3D auto-guess, see below), `captureOnStopTracking` (bool, default true), `filePath` (mirrors `BeanLogger.FilePath` — explicit override or default under the project root, see §8.5).
@@ -804,6 +806,11 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-09 15:34 — **`BeanVisualizer.DrawPath()` given an injectable `IGizmoDrawer` seam, closing
+  a real test-coverage gap found while reviewing T05's history.** Full reasoning and the local,
+  mutation-verified 102/102 EditMode run in §8.3 above and `TESTS/TestTracker.md`'s T05 notes. Proves
+  `BeanVisualizer`'s own draw-call logic for the first time; does not and cannot prove live pixel
+  rendering, which is a separate, still-open question tracked in T05.
 - 2026-08-09 13:17 — **CI's `cache-installation` reverted - caused a real 35-minute timeout, not a
   speedup.** Root-caused from `buildalon/unity-setup`'s own source rather than guessed: with no
   `build-targets`/`modules` specified, it silently installs the platform's IL2CPP module

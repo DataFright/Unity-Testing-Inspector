@@ -10,6 +10,16 @@ namespace UTI
         ByTime
     }
 
+    // Seam between BeanVisualizer's draw-call logic (which segments, which colors, in which
+    // order) and the actual Gizmos API - lets DrawPath() be exercised and asserted by an EditMode
+    // test via a fake implementation, without needing a live Scene view. See DrawPath()/UnityGizmoDrawer.
+    internal interface IGizmoDrawer
+    {
+        Color Color { set; }
+        void DrawLine(Vector3 from, Vector3 to);
+        void DrawSphere(Vector3 center, float radius);
+    }
+
     // Reads tracker.Samples straight out of the live buffer every gizmo draw - no event
     // subscription. That buffer only exists while the GameObject is alive, and Play Mode state
     // (including it) is discarded on exiting Play Mode, so this is a live, during-Play
@@ -18,6 +28,15 @@ namespace UTI
     /// <summary>Draws a BeanTracker's recorded path as a line in the Scene view via gizmos.</summary>
     public class BeanVisualizer : MonoBehaviour
     {
+        private sealed class UnityGizmoDrawer : IGizmoDrawer
+        {
+            public static readonly UnityGizmoDrawer Instance = new UnityGizmoDrawer();
+
+            public Color Color { set => Gizmos.color = value; }
+            public void DrawLine(Vector3 from, Vector3 to) => Gizmos.DrawLine(from, to);
+            public void DrawSphere(Vector3 center, float radius) => Gizmos.DrawSphere(center, radius);
+        }
+
         private const float GizmoPointRadius = 0.05f;
 
         [SerializeField] private BeanTracker tracker;
@@ -32,11 +51,16 @@ namespace UTI
         public bool DrawPoints { get => drawPoints; set => drawPoints = value; }
         public int MaxPointsToDraw { get => maxPointsToDraw; set => maxPointsToDraw = value; }
 
-        private void OnDrawGizmos() => DrawPath();
+        private void OnDrawGizmos() => DrawPath(UnityGizmoDrawer.Instance);
 
-        private void OnDrawGizmosSelected() => DrawPath();
+        private void OnDrawGizmosSelected() => DrawPath(UnityGizmoDrawer.Instance);
 
-        private void DrawPath()
+        // Takes the drawer as a parameter (rather than calling Gizmos.* directly) so the actual
+        // sequence of draw calls - which segments, which colors, in which order, decimation and
+        // drawPoints applied correctly - can be asserted by an EditMode test via a fake IGizmoDrawer.
+        // Unity's own Gizmos.DrawLine rendering pixels to the Scene view is not re-verified here;
+        // that's Unity's engine contract, not UTI's logic.
+        internal void DrawPath(IGizmoDrawer drawer)
         {
             BeanTracker activeTracker = tracker != null ? tracker : GetComponent<BeanTracker>();
             if (activeTracker == null)
@@ -53,16 +77,16 @@ namespace UTI
                 int fromIndex = indices[i - 1];
                 int toIndex = indices[i];
 
-                Gizmos.color = ResolveColor(toIndex, samples);
-                Gizmos.DrawLine(samples[fromIndex].Position, samples[toIndex].Position);
+                drawer.Color = ResolveColor(toIndex, samples);
+                drawer.DrawLine(samples[fromIndex].Position, samples[toIndex].Position);
             }
 
             if (drawPoints)
             {
                 foreach (int index in indices)
                 {
-                    Gizmos.color = ResolveColor(index, samples);
-                    Gizmos.DrawSphere(samples[index].Position, GizmoPointRadius);
+                    drawer.Color = ResolveColor(index, samples);
+                    drawer.DrawSphere(samples[index].Position, GizmoPointRadius);
                 }
             }
         }

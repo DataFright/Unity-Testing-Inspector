@@ -6,6 +6,49 @@ namespace UTI.Tests
 {
     public class BeanVisualizerTests
     {
+        // Fake IGizmoDrawer that records exactly what DrawPath() sent it - the color active at
+        // the moment of each DrawLine/DrawSphere call - so DrawPath()'s actual draw-call
+        // sequence can be asserted without a live Scene view. See BeanVisualizer.IGizmoDrawer.
+        private sealed class RecordingGizmoDrawer : IGizmoDrawer
+        {
+            public readonly struct LineCall
+            {
+                public LineCall(Vector3 from, Vector3 to, Color color)
+                {
+                    From = from;
+                    To = to;
+                    Color = color;
+                }
+
+                public Vector3 From { get; }
+                public Vector3 To { get; }
+                public Color Color { get; }
+            }
+
+            public readonly struct SphereCall
+            {
+                public SphereCall(Vector3 center, float radius, Color color)
+                {
+                    Center = center;
+                    Radius = radius;
+                    Color = color;
+                }
+
+                public Vector3 Center { get; }
+                public float Radius { get; }
+                public Color Color { get; }
+            }
+
+            private Color currentColor;
+
+            public Color Color { set => currentColor = value; }
+            public List<LineCall> Lines { get; } = new List<LineCall>();
+            public List<SphereCall> Spheres { get; } = new List<SphereCall>();
+
+            public void DrawLine(Vector3 from, Vector3 to) => Lines.Add(new LineCall(from, to, currentColor));
+            public void DrawSphere(Vector3 center, float radius) => Spheres.Add(new SphereCall(center, radius, currentColor));
+        }
+
         [Test]
         public void SelectIndicesToDraw_SampleCountAtOrBelowMax_ReturnsEveryIndex()
         {
@@ -98,6 +141,151 @@ namespace UTI.Tests
 
             Assert.AreEqual(Color.blue, slow);
             Assert.AreEqual(Color.red, fast);
+        }
+
+        [Test]
+        public void DrawPath_TwoSamples_DrawsSingleLineWithConfiguredColor()
+        {
+            var go = new GameObject("BeanVisualizerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            tracker.ClearSamples();
+            tracker.StartTracking();
+
+            var visualizer = go.AddComponent<BeanVisualizer>();
+            visualizer.Tracker = tracker;
+            visualizer.ColorMode = BeanColorMode.None;
+            visualizer.PathColor = Color.cyan;
+
+            var from = new Vector3(0f, 0f, 0f);
+            var to = new Vector3(1f, 2f, 3f);
+            go.transform.position = from;
+            tracker.SimulateFrame(0f);
+            go.transform.position = to;
+            tracker.SimulateFrame(0f);
+
+            var drawer = new RecordingGizmoDrawer();
+            visualizer.DrawPath(drawer);
+
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(1, drawer.Lines.Count);
+            Assert.AreEqual(from, drawer.Lines[0].From);
+            Assert.AreEqual(to, drawer.Lines[0].To);
+            Assert.AreEqual(Color.cyan, drawer.Lines[0].Color);
+            Assert.AreEqual(0, drawer.Spheres.Count);
+        }
+
+        [Test]
+        public void DrawPath_FewerThanTwoSamples_DrawsNothing()
+        {
+            var go = new GameObject("BeanVisualizerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            tracker.ClearSamples();
+            tracker.StartTracking();
+
+            var visualizer = go.AddComponent<BeanVisualizer>();
+            visualizer.Tracker = tracker;
+
+            var drawerWithZeroSamples = new RecordingGizmoDrawer();
+            visualizer.DrawPath(drawerWithZeroSamples);
+
+            tracker.SimulateFrame(0f); // exactly one sample now
+
+            var drawerWithOneSample = new RecordingGizmoDrawer();
+            visualizer.DrawPath(drawerWithOneSample);
+
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(0, drawerWithZeroSamples.Lines.Count);
+            Assert.AreEqual(0, drawerWithOneSample.Lines.Count);
+        }
+
+        [Test]
+        public void DrawPath_NoTrackerAvailable_DrawsNothing()
+        {
+            var go = new GameObject("BeanVisualizerTestObject");
+            var visualizer = go.AddComponent<BeanVisualizer>();
+            visualizer.Tracker = null; // and no BeanTracker component on the GameObject either
+
+            var drawer = new RecordingGizmoDrawer();
+            visualizer.DrawPath(drawer);
+
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(0, drawer.Lines.Count);
+            Assert.AreEqual(0, drawer.Spheres.Count);
+        }
+
+        [Test]
+        public void DrawPath_SampleCountExceedsMax_DrawsDecimatedSegmentsMatchingSelectIndicesToDraw()
+        {
+            var go = new GameObject("BeanVisualizerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            tracker.ClearSamples();
+            tracker.StartTracking();
+
+            var visualizer = go.AddComponent<BeanVisualizer>();
+            visualizer.Tracker = tracker;
+            visualizer.MaxPointsToDraw = 3;
+
+            const int sampleCount = 10;
+            for (int i = 0; i < sampleCount; i++)
+            {
+                go.transform.position = new Vector3(i, 0f, 0f);
+                tracker.SimulateFrame(0f);
+            }
+
+            IReadOnlyList<int> expectedIndices = BeanVisualizer.SelectIndicesToDraw(sampleCount, 3);
+            IReadOnlyList<BeanSample> samples = tracker.Samples;
+
+            var drawer = new RecordingGizmoDrawer();
+            visualizer.DrawPath(drawer);
+
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(expectedIndices.Count - 1, drawer.Lines.Count);
+            for (int i = 1; i < expectedIndices.Count; i++)
+            {
+                RecordingGizmoDrawer.LineCall segment = drawer.Lines[i - 1];
+                Assert.AreEqual(samples[expectedIndices[i - 1]].Position, segment.From);
+                Assert.AreEqual(samples[expectedIndices[i]].Position, segment.To);
+            }
+        }
+
+        [Test]
+        public void DrawPath_DrawPointsEnabled_AlsoDrawsSphereAtEachSelectedIndex()
+        {
+            var go = new GameObject("BeanVisualizerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            tracker.ClearSamples();
+            tracker.StartTracking();
+
+            var visualizer = go.AddComponent<BeanVisualizer>();
+            visualizer.Tracker = tracker;
+            visualizer.DrawPoints = true;
+            visualizer.MaxPointsToDraw = 3;
+
+            const int sampleCount = 10;
+            for (int i = 0; i < sampleCount; i++)
+            {
+                go.transform.position = new Vector3(i, 0f, 0f);
+                tracker.SimulateFrame(0f);
+            }
+
+            IReadOnlyList<int> expectedIndices = BeanVisualizer.SelectIndicesToDraw(sampleCount, 3);
+            IReadOnlyList<BeanSample> samples = tracker.Samples;
+
+            var drawer = new RecordingGizmoDrawer();
+            visualizer.DrawPath(drawer);
+
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(expectedIndices.Count, drawer.Spheres.Count);
+            for (int i = 0; i < expectedIndices.Count; i++)
+            {
+                Assert.AreEqual(samples[expectedIndices[i]].Position, drawer.Spheres[i].Center);
+                Assert.AreEqual(0.05f, drawer.Spheres[i].Radius); // matches BeanVisualizer.GizmoPointRadius
+            }
         }
     }
 }
