@@ -222,8 +222,25 @@ remembering, not a plan. Nothing here should be started without a real design pa
 
 "UTI" is a joke and a working title — memorable, a little absurd, very "programmer humor." Folder/namespace uses it for now; can rebrand before any real launch without much friction since it's isolated to this project folder.
 
+**Settled 2026-08-09: the spelled-out name is "Unity Testing Inspector," not "Unity Testing
+Isolator."** A full-project review found the two had drifted — `README.md`'s title,
+`package.json`'s `displayName`, and `TestTracker.md` all said "Isolator," while the actual live
+GitHub repo (`github.com/DataFright/Unity-Testing-Inspector`), `package.json`'s own
+`repository`/`documentationUrl`/etc., `CLAUDE.md`, `DESIGN.md`, and `USAGE.md` all said
+"Inspector." Standardized on **Inspector** across the four inconsistent files since the repo URL
+is the fixed, already-shared external fact — cheaper to update display text than rename a live
+public repo.
+
 ## Change Log
 
+- 2026-08-09 10:05 — **Full outside project review, then two follow-ups landed.** A fresh review
+  (code + docs + tests, no prior-session context) graded the project overall B+ — strong marks for
+  architecture/decoupling/error-handling discipline and the honesty of the Pass/Planned tracking,
+  held back by doc volume disproportionate to actual git history, `BeanVisualizer`'s still-never-
+  visually-confirmed render (T05), and thin multi-project validation. Two findings acted on
+  immediately: (1) the Isolator/Inspector naming drift — see this file's Naming section — fixed
+  across `README.md`/`package.json`/`TestTracker.md`/`USAGE.md`; (2) CI's already-known
+  `cache-installation` speedup (see `DESIGN.md` §12) actually wired in, not just noted as backlog.
 - 2026-08-08 22:50 — **CI confirmed fully green — first real, verified pass end to end.** Four
   distinct real bugs found and fixed to get here (a dot-prefixed folder hiding from a glob, an
   open upstream bug on Ubuntu, a Windows stdout-handle quirk hanging the process, and Unity

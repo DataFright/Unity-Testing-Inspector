@@ -1,4 +1,4 @@
-# UTI — Unity Testing Isolator
+# UTI — Unity Testing Inspector
 
 *(working title — funny on purpose, renameable at launch)*
 

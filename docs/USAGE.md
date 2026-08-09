@@ -44,7 +44,7 @@ your test project immediately without needing a commit/push round-trip.
 
 The `testables` entry isn't optional if you want UTI's own tests to show up in your Test Runner —
 without it, Unity silently reports 0 tests found even though the package compiled fine. Save,
-switch to the Editor, let it recompile. "UTI (Unity Testing Isolator)" shows up under
+switch to the Editor, let it recompile. "UTI (Unity Testing Inspector)" shows up under
 Window > Package Manager > In Project.
 
 **Then, one more one-click step:** in the Editor menu bar, run **UTI > Setup Project (Config +

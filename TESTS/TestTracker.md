@@ -68,7 +68,7 @@ In whichever test project you want to check, open `Packages/manifest.json` and a
 }
 ```
 
-Save, switch to the Unity Editor, let it recompile. "UTI (Unity Testing Isolator)" should show up under Window > Package Manager > In Project. Then:
+Save, switch to the Unity Editor, let it recompile. "UTI (Unity Testing Inspector)" should show up under Window > Package Manager > In Project. Then:
 
 - **T01**: Window > General > Test Runner > EditMode tab > run `UTI.Tests.BeanBufferTests`.
 - **T07**: just confirm it resolved with no console errors.

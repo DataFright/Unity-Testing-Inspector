@@ -537,6 +537,13 @@ to `main`, so an outside contributor's PR can never run this workflow with acces
 regardless of GitHub's fork-PR approval settings. PR-triggered runs can be added later, scoped more
 carefully, if the project ever gets outside contributors.
 
+**`cache-installation: true` added 2026-08-09** to the "Install Unity" step — `buildalon/unity-setup`
+caches the Unity *Editor* install between runs (confirmed via its own docs; Hub itself still
+reinstalls each time, but that's fast). Every prior run paid the full ~12-13 min Editor download
+from scratch; this was noted as a known, low-risk speedup right after CI first went green and is
+now actually wired in. Not yet re-verified with a live run (first cache-hit run will confirm it
+actually shortens things, rather than just not breaking anything).
+
 **Real Unity license, activated live each run — not a portable file, and this took two attempts to
 get right.** First attempt used `game-ci/unity-test-runner` with a `UNITY_LICENSE` secret holding
 an exported license file (the classic, widely-documented approach). That failed a due-diligence
@@ -776,6 +783,15 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-09 10:05 — **CI speedup wired in: `cache-installation: true` added to the "Install Unity"
+  step** (§12), the backlog item noted right after CI first went green. Caches the Unity Editor
+  install between runs instead of paying the ~12-13 min download every time. Not yet re-verified
+  with a live run. Also fixed a naming inconsistency flagged by a full-project review this same
+  session: the product name was "UTI (Unity Testing Isolator)" in `README.md`/`package.json`'s
+  `displayName`/`TestTracker.md`/`USAGE.md`, but the actual live GitHub repo is
+  `Unity-Testing-Inspector` — per user decision, standardized on **Inspector** (matches the real,
+  already-shared repo URL) across all four files rather than renaming the repo itself. See
+  `PROJECT_OVERVIEW.md`'s Naming section.
 - 2026-08-08 22:50 — **CI's fifth live run: fully green, first confirmed pass end to end.**
   `Status: Success`, 12m 32s total, one harmless warning (Node.js 20 deprecation notice from the
   actions themselves, no functional effect). Verified as a real pass, not assumed: the log shows

@@ -28,10 +28,14 @@ jobs:
       - name: Checkout UTI
         uses: actions/checkout@v4
 
+      # cache-installation caches the Unity Editor install between runs (Hub itself still
+      # reinstalls each time, but that's fast) - the Editor download is the ~12-13 min cost
+      # every run currently pays from scratch. Confirmed via buildalon/unity-setup's own docs.
       - name: Install Unity
         uses: buildalon/unity-setup@v2
         with:
           unity-version: 6000.5.6f1
+          cache-installation: true
 
       # Live login each run, correctly bound to this runner's HardwareId - not a pre-generated
       # license file. A license file exported from any one machine (including a maintainer's own
