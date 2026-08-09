@@ -769,6 +769,19 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-08 21:38 — **CI's third live run found a third real bug: `-logFile -` hangs on
+  Windows.** The prior fixes (Personal license live-login, `CI~/`, `windows-latest`) all held —
+  Install Unity (~13 min, expected first-run cost of downloading the full Editor) and license
+  activation both succeeded cleanly. The test step itself then sat completely silent for 39+
+  minutes with zero further log output, never completing. Root cause, confirmed via Unity's own
+  issue tracker and community reports before touching anything: Windows applications don't have a
+  real stdout handle by default, so `-logFile -` (which streams cleanly to stdout on Mac/Linux) can
+  silently **hang the whole process** on Windows rather than just fail to show output - a
+  documented case, not a one-off. **Fixed** by writing to a real file (`-logFile CI~/unity.log`)
+  instead, plus a new step that prints that file's contents into the Actions log (and uploads it as
+  an artifact) so the run stays debuggable regardless of outcome. Also added `timeout-minutes: 30`
+  at the job level so any future hang fails loudly within a bounded time instead of silently
+  occupying a runner indefinitely. Not yet re-verified with another live run.
 - 2026-08-08 20:41 — **CI's second live run found a second real bug: switched runner OS from
   Ubuntu to Windows** (see §12). License activation and the `CI~/` fix both worked — the next
   failure was `buildalon/unity-setup`'s own `Error: ENOENT: no such file or directory, access

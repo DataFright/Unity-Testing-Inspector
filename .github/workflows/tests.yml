@@ -19,6 +19,11 @@ jobs:
     # use - https://github.com/buildalon/unity-setup/issues/57). This repo is public, so GitHub
     # gives unlimited free minutes on any OS - no cost tradeoff either way.
     runs-on: windows-latest
+    # A healthy run so far: ~13 min to install Unity, seconds to activate the license, then the
+    # actual test step (97 fast, logic-only tests, no rendering) should finish in a couple minutes.
+    # A hard cap so a genuine hang (found live 2026-08-08 - see DESIGN.md Sec 12) fails loudly
+    # instead of silently occupying a runner for hours.
+    timeout-minutes: 30
     steps:
       - name: Checkout UTI
         uses: actions/checkout@v4
@@ -42,17 +47,35 @@ jobs:
       # CI~ is a minimal, scrubbed project shell (no scenes, no game content —
       # see CI~/README.md) that exists solely so Unity's Test Runner has a real
       # project to resolve UTI's own EditMode tests (TESTS/EditMode/) from.
+      #
+      # -logFile CI~/unity.log, not "-logFile -": found live 2026-08-08 (see DESIGN.md Sec 12) -
+      # Windows applications don't have a real stdout handle by default, so "-logFile -" (which
+      # streams to stdout fine on Mac/Linux) can silently hang the whole process on Windows
+      # instead of just failing to show output. A real file path avoids that entirely, and the
+      # next step prints/uploads it so the run is still debuggable either way.
       - name: Run EditMode test suite
         uses: buildalon/unity-action@v2
         with:
           project-path: CI~
           args: >-
             -runTests -batchmode -nographics -testPlatform EditMode
-            -testResults CI~/EditMode-results.xml -logFile -
+            -testResults CI~/EditMode-results.xml -logFile CI~/unity.log
+
+      - name: Print Unity log
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path "CI~/unity.log") {
+            Get-Content "CI~/unity.log"
+          } else {
+            Write-Host "No CI~/unity.log found - Unity may not have started."
+          }
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: EditMode-test-results
-          path: CI~/EditMode-results.xml
+          path: |
+            CI~/EditMode-results.xml
+            CI~/unity.log
