@@ -477,7 +477,7 @@ covers the actual logic.
 1. `BeanSample` (data struct) + circular buffer implementation.
 2. `BeanTracker` — capture loop, `OnSample` event, public start/stop/clear API. **Done, verified Pass** (T02) — all 4 `BeanTrackerTests` green in little wings after two fail→fix rounds (see Change Log).
 3. `IBeanOutput` interface + `BeanLogger` — console output first (fastest to verify), then CSV output. **Done, verified Pass** (T09) — all 4 `BeanLoggerTests` green in little wings.
-4. `BeanVisualizer` — gizmo path draw, then decimation + color modes once the basic line works. **Automated logic verified Pass** (T10) — all 6 `BeanVisualizerTests` green in little wings. Actual Scene-view rendering (T05/T06) still needs a manual Play Mode check.
+4. `BeanVisualizer` — gizmo path draw, then decimation + color modes once the basic line works. **Automated logic verified Pass** (T10) — all 6 `BeanVisualizerTests` green in little wings. Actual Scene-view rendering (T05/T06) still Planned — briefly marked Pass 2026-08-09 on the strength of screenshots this session didn't itself produce and couldn't independently verify, then reverted per direct user correction once this session's own live attempts (including real Play Mode) never reproduced a visible gizmo line themselves. See `TESTS/TestTracker.md`'s T05 row for the full history.
 5. `package.json` + `Runtime`/`Tests` asmdefs — turn the folder into a real installable UPM package. *(Done early, out of order, so BeanBufferTests could actually run — see Change Log. `Editor.asmdef` still deferred until there's real Editor-only code to isolate.)*
 5.5. `BeanSnapshotExporter` — persisted scene+path artifact (§8.4). **Verified Pass live in little wings (T16/T17)** — real capture confirmed on the filesystem, correct path line, correct scene geometry. Since verification: gained `DimensionMode` override and a broadside-framing fix (§8.4), neither re-verified yet.
 5.6. `BeanArtifactPaths` + `BeanMouseTracker` + `BeanConfig` — shared output-location helper (§8.5), mouse-input tracking proxy (§8.6), and project-wide default-settings asset (§8.7), all added 2026-08-07. Unit-tested; `BeanMouseTracker`'s live input-reading path and `BeanConfig`'s live Editor `Reset()` behavior not yet verified in Play Mode/the Editor.
@@ -783,6 +783,14 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-09 11:50 — **T05's brief Pass marking reverted back to Planned, per direct user
+  correction.** Earlier the same day, T05 was marked Pass based on screenshots the user provided
+  showing a live gizmo line. Corrected: this session did not produce those screenshots itself, could
+  not independently verify their source, and its own separate live attempts (including real Play
+  Mode, in both `project 2` and `little wings`) never reproduced a visible gizmo line. A result this
+  session can't reproduce or verify doesn't meet this project's own "Pass only after a real,
+  verified report" bar. See `TESTS/TestTracker.md`'s T05 row and Change Log for the full, honest
+  history of both the brief Pass and the reversion.
 - 2026-08-09 10:05 — **CI speedup wired in: `cache-installation: true` added to the "Install Unity"
   step** (§12), the backlog item noted right after CI first went green. Caches the Unity Editor
   install between runs instead of paying the ~12-13 min download every time. Not yet re-verified
