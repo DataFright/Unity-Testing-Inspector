@@ -769,6 +769,24 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-08 22:25 — **CI's fourth live run found a fourth real bug: `CI~/` needs an `Assets/`
+  folder, even empty.** The `-logFile` fix worked - this run failed fast (seconds, not a hang)
+  with a clear Unity error instead: `Couldn't set project path to: D:/.../CI~`. Root-caused via
+  direct local reproduction rather than another slow CI round-trip: ran the exact same Unity
+  version against a local copy of `CI~/` and got the identical error in seconds, then used that
+  fast local loop to isolate the actual cause - first ruled out the `~` character itself (an
+  identical tilde-free copy failed exactly the same way), then confirmed Unity refuses to accept
+  `-projectPath` for any directory lacking an `Assets/` folder, even a completely empty one -
+  something this project shell never had, since there's deliberately no game content to put there.
+  **Fixed** by adding `CI~/Assets/` (kept in git via `.gitkeep`, since git doesn't track empty
+  directories) - confirmed locally that this gets Unity past the check and into real compilation
+  of UTI's own assemblies. A local end-to-end verification (does it reach and pass the actual
+  tests) was inconclusive for an unrelated reason: this repo lives inside a OneDrive-synced folder,
+  and background sync activity appears to have caused a Unity build-system rebuild loop
+  (`Rebuilding DAG because FileSignature timestamp changed`, repeating) during the very
+  file-write-heavy first-time compile - a local testing-environment artifact, not evidence the fix
+  itself is wrong. GitHub's runner has no such sync process, so the real CI run is the one that
+  actually settles it. Not yet re-verified there.
 - 2026-08-08 21:38 — **CI's third live run found a third real bug: `-logFile -` hangs on
   Windows.** The prior fixes (Personal license live-login, `CI~/`, `windows-latest`) all held —
   Install Unity (~13 min, expected first-run cost of downloading the full Editor) and license

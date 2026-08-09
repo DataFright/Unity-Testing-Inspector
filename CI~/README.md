@@ -11,10 +11,13 @@ problems, found the hard way on the first live CI run, forced the move:
    view when UTI is referenced via a `"file:"` dependency, unlike a plain, non-dot, non-tilde
    folder name would.
 
-There is no `Assets/` folder here and none should be added — no scenes, no GameObjects, no
-gameplay code. UTI's own standing rule against building demo/sample Unity projects/scenes still
-applies; this folder is infrastructure to run the tests that already exist, not a place to test
-or showcase a feature by hand.
+**`Assets/` exists but is deliberately empty** (just a `.gitkeep`, since git doesn't track empty
+directories) — Unity refuses to accept `-projectPath` for any directory lacking this folder at
+all, even completely empty, confirmed live 2026-08-08 (see `docs/DESIGN.md` Sec 12's Change Log).
+That's the only reason it's here. No scenes, no GameObjects, no gameplay code should ever go in
+it — UTI's own standing rule against building demo/sample Unity projects/scenes still applies;
+this folder is infrastructure to run the tests that already exist, not a place to test or
+showcase a feature by hand.
 
 `ProjectSettings/` started as a copy of a real consuming test project's settings (known to work
 with UTI on the pinned Unity version — see `ProjectSettings/ProjectVersion.txt`), then had every
