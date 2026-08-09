@@ -99,13 +99,17 @@ UTI/
     Protocol. The trailing ~ is UPM convention so these wouldn't import by default if ever built.)
 ```
 
-**`.github/` (added 2026-08-08)** — CI, not package content. `.github/workflows/tests.yml` runs
-the EditMode suite on push/PR; `.github/ci-project/` is a minimal, scrubbed Unity project shell
+**`.github/` and `CI~/` (added 2026-08-08)** — CI, not package content. `.github/workflows/tests.yml`
+runs the EditMode suite on push to `main`; `CI~/` is a minimal, scrubbed Unity project shell
 (ProjectSettings + a trimmed `Packages/manifest.json` referencing UTI via a relative `file:` path)
 that exists solely so Unity's Test Runner has a real project to resolve tests from — see its own
 `README.md`. No scenes, no game content; the "no demo/sample Unity projects" rule (§12) still
-applies, this is test infrastructure, not a showcase. Dot-prefixed so it's excluded from the
-package payload the same way `Samples~/` is excluded by its trailing `~`.
+applies, this is test infrastructure, not a showcase. **`CI~/` originally lived at
+`.github/ci-project/` — moved after the first live CI run failed** (see §12's CI subsection): the
+CI action's own version-detection glob skips dot-prefixed directories, so it couldn't see a project
+living under `.github/` at all. The trailing `~` is the same UPM convention `Samples~/` already
+uses — excluded from a consuming project's package payload/asset import either way, dot-prefix or
+tilde-suffix, but only the tilde form is also visible to a generic (non-Unity-aware) glob.
 
 Also at the package root, all added 2026-08-07 alongside `README.md`/`DESIGN.md`/
 `TESTS/TestTracker.md` — but note none of these three are meant to stay *only* here, they're
@@ -522,7 +526,7 @@ All three reference the same live source, so a change here is immediately visibl
 ### CI (added 2026-08-08)
 
 `.github/workflows/tests.yml` runs the EditMode suite (`TESTS/EditMode/`) headlessly on every push
-to `main`, against the minimal project shell at `.github/ci-project/` (see §4). This automates the
+to `main`, against the minimal project shell at `CI~/` (see §4). This automates the
 "code gets written, EditMode tests get run" half of the loop above — it does **not** replace live
 verification of anything Play-Mode-dependent (`BeanVisualizer`'s actual gizmo draw,
 `BeanSnapshotExporter`'s actual capture, `BeanMouseTracker`'s actual input read), which still needs
@@ -551,12 +555,19 @@ introduces: an actual Unity account password now lives in this repo's secrets, n
 blob — the push-only trigger above exists specifically to keep that exposure as narrow as
 reasonably possible.
 
-**Not yet live-verified as of the day this was written** — the workflow exists and the project
-shell resolves the package locally, but no run has actually executed in GitHub Actions yet (needs
-the two secrets added first). Exact action versions/flags (`@v2`, `unity-action`'s `args` string)
-are a best-effort from current documentation, not confirmed against a real run — the first actual
-CI run is the real test, same "don't claim Pass before a real report" discipline as everything
-else this project tracks.
+**First live run failed on a real, findable bug — not a licensing problem this time.** Once the
+`UNITY_EMAIL`/`UNITY_PASSWORD` secrets were added, the license-activation step actually worked (no
+error there at all — confirms the approach above is sound). It failed one step later, in
+`buildalon/unity-setup`'s own version-detection: `Error: No accessible file found for glob pattern:
+.../**/ProjectVersion.txt`. Root cause: that glob searches the whole repo for `ProjectVersion.txt`
+to confirm the Unity version, and generic (non-Unity-aware) glob implementations skip
+dot-prefixed directories by default — the project shell lived at `.github/ci-project/` at the
+time, so the file was never reachable no matter how correct everything else was. **Fixed** by
+moving the whole shell to `CI~/` (see §4) — same UPM "don't import this" convention as `Samples~/`,
+but visible to a plain glob unlike a dot-prefixed folder. Not yet re-verified as of the day this
+was written — one more real run is still needed to confirm the move actually fixes it and nothing
+else is wrong, same "don't claim Pass before a real report" discipline as everything else this
+project tracks.
 
 ### The Bring-Your-Own-Test Protocol (formalized 2026-08-08, from a real `project 2` round)
 
@@ -748,6 +759,13 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-08 — **CI's first live run found a real bug: `CI~/` moved from `.github/ci-project/`**
+  (see §4/§12). License activation itself worked on the first try with `UNITY_EMAIL`/
+  `UNITY_PASSWORD` — the failure was one step later, `buildalon/unity-setup`'s own
+  `ProjectVersion.txt`-detection glob silently skipping the dot-prefixed `.github/` directory the
+  project shell lived in. Moved to a tilde-suffixed name instead (`CI~/`, matching `Samples~/`'s
+  existing UPM convention), which keeps the same "don't import into a consuming project" property
+  while staying visible to a generic glob. Not yet re-verified with another real run.
 - 2026-08-08 — **CI's license activation approach corrected before its first real run** (see §12).
   The original plan (`game-ci/unity-test-runner` + a `UNITY_LICENSE` secret holding an exported
   license file) hit two dead ends during due diligence, neither found by reading code — both found

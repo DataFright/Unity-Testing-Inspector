@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.uti.core": "file:../../..",
+    "com.uti.core": "file:../..",
     "com.unity.test-framework": "1.7.0",
     "com.unity.ext.nunit": "2.0.5",
     "com.unity.modules.imageconversion": "1.0.0",

@@ -25,15 +25,16 @@
 .DS_Store
 Thumbs.db
 
-# .github/ci-project is a real (if minimal) Unity project shell for CI (see its own README.md) -
-# Unity will generate the usual per-machine/per-run junk in it the same as any other project.
-/.github/ci-project/Library/
-/.github/ci-project/Temp/
-/.github/ci-project/Logs/
-/.github/ci-project/UserSettings/
-/.github/ci-project/obj/
-/.github/ci-project/Build/
-/.github/ci-project/Builds/
+# CI~ is a real (if minimal) Unity project shell for CI (see its own README.md) - Unity/the test
+# run will generate the usual per-machine/per-run junk in it the same as any other project.
+/CI~/Library/
+/CI~/Temp/
+/CI~/Logs/
+/CI~/UserSettings/
+/CI~/obj/
+/CI~/Build/
+/CI~/Builds/
+/CI~/EditMode-results.xml
 
 # Internal-only working docs (AI-agent instructions, cross-session handoff notes) - not meant for
 # the public package/repo. Ignoring the file AND its paired .meta together, same as any other file

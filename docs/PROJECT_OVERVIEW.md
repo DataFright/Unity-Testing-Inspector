@@ -224,6 +224,13 @@ remembering, not a plan. Nothing here should be started without a real design pa
 
 ## Change Log
 
+- 2026-08-08 — **CI's first live run found and fixed a real bug.** License activation
+  (`UNITY_EMAIL`/`UNITY_PASSWORD` via `buildalon/activate-unity-license`) worked on the first try.
+  The next step failed: `buildalon/unity-setup`'s own version-detection glob silently skips
+  dot-prefixed directories, so it couldn't find `ProjectVersion.txt` while the CI project shell
+  lived at `.github/ci-project/`. Moved to `CI~/` (tilde-suffixed, same UPM "don't import this"
+  convention `Samples~/` already uses, but visible to a plain glob) — see `DESIGN.md` §4/§12's
+  Change Log for the full root-cause writeup. Not yet re-verified with another live run.
 - 2026-08-08 — **Project review pass, then follow-up work kicked off.** A full outside review of
   the codebase, file structure, docs, and test/error-handling coverage (code quality strong,
   decoupling and testable/untestable splits real, error-boundary discipline unusually consistent

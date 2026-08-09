@@ -36,9 +36,10 @@ UTI/                            (this repo — package source, not a Unity proje
   LICENSE                       MIT
   CLAUDE.md                     local-only — standing behavioral rules for Claude sessions
   .github/
-    workflows/tests.yml         CI — runs the EditMode suite on push/PR
-    ci-project/                 minimal, scrubbed Unity project shell CI resolves tests from
-                                 (no scenes/game content — see its own README.md)
+    workflows/tests.yml         CI — runs the EditMode suite on push to main
+  CI~/                          minimal, scrubbed Unity project shell CI resolves tests from
+                                 (no scenes/game content — see its own README.md; tilde-suffixed,
+                                 not dot-prefixed, after a real CI-glob bug forced a move)
   Runtime/                      the actual package code (see "The six components" below)
     UTI.Runtime.asmdef
   TESTS/
@@ -173,3 +174,6 @@ checkout.)
   file-based license turned out to be machine-bound — see `docs/DESIGN.md` §12's Change Log);
   Known Gaps now names the actual secrets needed and flags that Unity's licensing infrastructure
   itself is a moving target worth re-verifying, not just UTI's own tooling.
+- 2026-08-08 — Updated once more same day: the CI project shell moved from `.github/ci-project/`
+  to `CI~/` after the first live CI run found the CI action's glob doesn't see dot-prefixed
+  directories (see `docs/DESIGN.md` §4/§12's Change Log). File map corrected.

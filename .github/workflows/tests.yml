@@ -35,20 +35,20 @@ jobs:
           username: ${{ secrets.UNITY_EMAIL }}
           password: ${{ secrets.UNITY_PASSWORD }}
 
-      # .github/ci-project is a minimal, scrubbed project shell (no scenes, no game content —
-      # see .github/ci-project/README.md) that exists solely so Unity's Test Runner has a real
+      # CI~ is a minimal, scrubbed project shell (no scenes, no game content —
+      # see CI~/README.md) that exists solely so Unity's Test Runner has a real
       # project to resolve UTI's own EditMode tests (TESTS/EditMode/) from.
       - name: Run EditMode test suite
         uses: buildalon/unity-action@v2
         with:
-          project-path: .github/ci-project
+          project-path: CI~
           args: >-
             -runTests -batchmode -nographics -testPlatform EditMode
-            -testResults .github/ci-project/EditMode-results.xml -logFile -
+            -testResults CI~/EditMode-results.xml -logFile -
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: EditMode-test-results
-          path: .github/ci-project/EditMode-results.xml
+          path: CI~/EditMode-results.xml
