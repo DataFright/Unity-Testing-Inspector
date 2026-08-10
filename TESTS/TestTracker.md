@@ -27,7 +27,7 @@ even in sessions with otherwise-full execution — use `AppDomain.CurrentDomain.
 | T02 | BeanTracker | `BeanTracker` capture loop, interval timing, stop, and event firing | Run `UTI.Tests.BeanTrackerTests` (4 EditMode tests, driven via `SimulateFrame()` — no Play Mode needed) | All 4 pass: position capture, interval-based capture count, `StopTracking()` halts capture, `OnSample` fires once per capture | little wings | **Pass** — all 4 green after two rounds of fail→fix (NRE from eager buffer alloc, then a vacuous-pass test bug around `OnEnable` autostart). Clean recompile, no console errors. | 2026-08-06 |
 | T03 | BeanLogger | Console output reflects captured samples | Add `BeanLogger` (Console target) alongside `BeanTracker`, Play, move the object | Console shows one log line per sample with correct position | little wings | **Pass** — 400 `[Bean] tick=... t=... pos=... rot=...` lines captured via `Application.logMessageReceived` on `PlayerPlane`, format matches `ConsoleBeanOutput.Format` exactly, positions track a real curving flight path. Caveat: reported count/first-tick (400 lines, first `tick=1`) doesn't match the same-run CSV report (401 rows, first `tick=0`) — architecturally impossible for these to differ since both outputs are driven by the same `HandleSample` loop, so this is a transcription slip in the report, not a real UTI behavior difference. Worth a quick recount next time rather than blocking on it. | 2026-08-07 |
 | T04 | BeanLogger | CSV output writes a valid file | Add `BeanLogger` (CSV target), Play, stop, inspect output file | CSV exists under the project root's `BeanLogs/` folder with header row + one row per sample | little wings | **Pass, but location changed since this ran.** Original Pass — `PlayerPlane_bean.csv` written correctly, file locked until Play Mode exit (confirms `Close()`-on-`OnDisable` flush timing), header exact match, 401 data rows cross-checked against console output and the live buffer — was against the old `Application.persistentDataPath` default. That default moved to the project root's `BeanLogs/` folder same session as the `BeanSnapshotExporter` path fix (see DESIGN.md §8.5); the CSV-writing logic itself is unchanged, only the resolved directory, so this isn't expected to break, but hasn't been re-confirmed at the new location. project 2 / 2d project 3 still not run. | 2026-08-07 |
-| T05 | BeanVisualizer | Scene view shows the recorded path | Add `BeanVisualizer` alongside a tracked/moving object, Play, view Scene window | Line drawn through captured points, matches actual movement | little wings, project 2 | **Planned, but narrowed for real, 2026-08-09.** `DrawPath()`'s own logic (segment selection, color, decimation, point-spheres) is now proven by 5 new, mutation-verified EditMode tests - 102/102 suite green, run for real via local Unity batch mode matching CI's version exactly, not just written. Only remaining gap: live-pixel confirmation that `Gizmos.DrawLine` actually renders visibly, which no automated tool in this project has been able to check (5 prior attempts, see notes below) and which T30's relay prompt is already positioned to answer. See "T05 Investigation Notes" below for the full history. | 2026-08-06 |
+| T05 | BeanVisualizer | Scene view shows the recorded path | Add `BeanVisualizer` alongside a tracked/moving object, Play, view Scene window | Line drawn through captured points, matches actual movement | little wings, project 2, bitshot | **Pass — confirmed for real, 2026-08-09, attempt 8.** The user personally ran the box-jump test in `project 2` and shared a real, first-hand screenshot: Scene view (left) and Game view (right) side by side, live in Play Mode, showing a clear yellow line tracing the actual jump path across the blue/yellow boxes, next to the tracked character standing on the yellow box in the Game view at that same moment. Unlike the 2026-08-09 reverted Pass, this is a direct first-hand report from the user themselves (not relayed secondhand, source and environment fully known and already-verified), arriving after everything upstream — movement, sample data, `BeanSnapshotExporter` — was independently confirmed across three separate projects. Clears this doc's own "Pass only after a real, verified report" bar honestly. One real caveat the user flagged directly, worth tracking: the trail had a short window before it started vanishing, requiring more than one try to actually catch it in a screenshot — see "T05 Investigation Notes" below, not yet root-caused. | 2026-08-06 |
 
 **History of all attempts before this confirmation (Planned throughout):** still nobody had actually *seen* the rendered path, across four separate attempts. Two rounds now, both blocked purely by screenshot tooling (not by anything wrong in UTI): round 1 got a stale/byte-identical image across camera framings; round 2 (genuine ~103s real-time Play run this time, not scripted) also came back stale/cached, so the agent substituted objective proxy evidence instead (frame-timing, console/CSV counts — see T06) and was explicit that it could not get a real screenshot. Underlying sample data keeps checking out (coherent path, no jumps, correct counts) and `OnDrawGizmos`/`OnDrawGizmosSelected` is straightforward code, so this is believed to work — but "believed to work" isn't the bar; needs one actual human glance or a working screenshot tool. Same root blocker as T06's unresolved half. **Update:** T17 passed — a real, correct path line was seen rendered into real scene geometry, via `BeanSnapshotExporter`'s Camera-based render rather than `BeanVisualizer`'s Gizmos. That's strong indirect confidence the underlying sample data and line-drawing concept are sound, but it is not the same code path as `OnDrawGizmos`/`OnDrawGizmosSelected`, so this row stays Planned rather than being marked Pass from a different component's success. Low remaining risk; worth a real attempt with this session's own `mcp__unity-mcp__Unity_SceneView_Capture*` tools if convenient, but no longer a blocking concern for v1 confidence. **Third attempt, 2026-08-08 (this session, `project 2`), still inconclusive — but for a new reason, not stale/cached tooling.** With real Play Mode access now working (see T12/T14), captures came back genuinely live and non-stale for the first time ever (one showed real tumbling debris boxes mid-physics). But a runtime-created `BeanVisualizer` test cube kept vanishing before a camera frame could be lined up on it — `project 2`'s own `GameManager` appears to reset/reload live scene state periodically once Play Mode starts, independent of `EditorApplication.isPlaying` (which stayed `true` throughout). Never got a single frame with both the test object and a visible gizmo trail in it. Left `project 2` clean afterward (no leftover objects - they don't survive a runtime state reset anyway). Worth retrying in `little wings` instead next time, since its scene doesn't have this kind of autonomous reset behavior. **Fourth attempt, 2026-08-09 (`project 2`), still inconclusive - sidestepped the Play Mode reset problem entirely, hit stale capture tooling instead.** Took a different approach this round specifically to avoid T05's third-attempt failure mode: built a real 40-sample curved path via the public API (`StartTracking()`/`SimulateFrame()`) on a fresh GameObject entirely in Edit Mode - no Play Mode needed at all, since `OnDrawGizmos` fires in the Editor regardless of Play state, and Edit Mode has none of `project 2`'s own `GameManager` autonomous scene-reset behavior that defeated attempt 3. Confirmed directly via the Unity API (not assumed): `SceneView.drawGizmos` was already `true`, and after calling `SceneView.Frame()` on the path's exact bounding region, `SceneView.pivot` read back as `(5, 2.5, 2)` - dead center of the 40-sample path - with the real level geometry (the blue/yellow/red box-jump level) visibly in frame at the expected scale in two different live, non-stale captures. Despite all of that lining up, no gizmo line ever appeared - and a follow-up control test (a built-in-icon marker object placed at the exact same pivot point) also never appeared. The decisive tell: two `Unity_Camera_Capture` calls taken after a real, confirmed scene change in between (adding the control marker) came back **byte-identical** (same 244,611-byte PNG) - a stale/cached image, the same failure signature as attempt 1's byte-identical captures. This rules out a framing bug or a BeanVisualizer logic problem in this attempt specifically (both were directly verified correct via the API) and narrows the blocker further: `Unity_Camera_Capture`/`Unity_SceneView_CaptureMultiAngleSceneView` appear not to include the Editor's Gizmo layer at all in this session, on top of sometimes returning cached frames. Test objects destroyed afterward (`result.DestroyObject`), scene confirmed clean via console log check (0 errors, 4 unrelated `RenderTexture.active` warnings from the capture tool itself, not from UTI). **Detective work + fifth attempt, same day: investigated whether this was ever actually confirmed working, at the user's request.** Re-read every dated entry in this row's own history plus `git log -p --follow -- Runtime/BeanVisualizer.cs` (one commit total, the initial one — the file has never been edited since it was written) and confirmed T24's multi-angle capture work only ever touched `BeanSnapshotExporter.cs`. **Conclusion: this row has never said Pass, in any session, before or after multi-angle capture existed — there is no known-good baseline to have regressed from.** The likely source of "I thought this worked before": `little wings/UTI/BeanSnapshots/*.png` (T16/T17) — real, confirmed-working images, but their filenames (`..._bean_snapshot.png`) match `BeanSnapshotExporter.ResolveSnapshotPath` exactly; opened one directly and it's a `LineRenderer`-through-`Camera.Render()` capture, a different code path from `BeanVisualizer`'s `Gizmos.DrawLine`/`OnDrawGizmos`, and `BeanVisualizer.cs` has zero file I/O so it could never have produced a PNG itself. At the user's suggestion, retried the same Edit-Mode-path technique in `little wings` (MCP re-probed fresh, confirmed re-attached there) as a mechanically different environment from `project 2`. First attempt used guessed coordinates (`y=50`) that landed inside `little wings`' terrain, producing a textureless green close-up - corrected by locating the real `PlayerPlane` object (`(0, 300, 0)`) and rebuilding the path at a safe altitude nearby. Resulting capture is unambiguous: `SceneView.pivot` confirmed at the exact requested `(20, 305, 7.5)`, `drawGizmos=true`, and the real `PlayerPlane` renders correctly and visibly in frame (genuine, live, non-stale - clearly a different image from every prior capture) - but no gizmo line anywhere in the shot, despite the 40-sample path running directly through that framed region. This is now cross-project convergent evidence (`project 2` and `little wings`, two independent Unity Editor instances) that `Unity_Camera_Capture`/`Unity_SceneView_CaptureMultiAngleSceneView` do not render the Editor's Gizmo layer at all in this tooling, a more specific and better-evidenced finding than the historical "sometimes stale" note alone. Test object destroyed, 0 console errors/warnings this round. | 2026-08-07, updated 2026-08-09 |
 | T06 | BeanVisualizer | Decimation kicks in above `maxPointsToDraw` | Track an object past `maxPointsToDraw` samples | Gizmo still draws without noticeable editor slowdown; path still recognizable | little wings | Partial — "no noticeable editor slowdown" now has strong objective evidence from a genuine ~103s real-time Play run (not scripted, unlike round 1): Unity's own frame timing held steady (`smoothDeltaTime≈0.0027s`, `unscaledDeltaTime≈0.0030s`, ~330–370fps) measured *after* the in-memory buffer had long since passed the 200-point decimation threshold and sat at its 1000-sample ring-buffer cap, zero console errors/warnings across the full run. Decimation math itself was already confirmed correct in round 1 (matches `SelectIndicesToDraw`/T10 exactly). What's still unconfirmed: "path still recognizable" — a qualitative/visual check, blocked on the same screenshot-tooling failure as T05 (third failed attempt now). **Update:** T17 (a much shorter, undecimated 40-sample run) confirmed a path renders recognizably and matches real movement, which is encouraging but doesn't directly test decimation at the 1000-sample/200-point-cap scale this row is actually about — still Partial. | 2026-08-07 |
@@ -55,19 +55,24 @@ even in sessions with otherwise-full execution — use `AppDomain.CurrentDomain.
 | T29 | BeanLogger | JSON Lines output (`JsonlBeanOutput`, `BeanOutputTargets.Json`), `BeanConfig.DefaultOutputTargets`, and the `BeanFileOutputBase` refactor that followed | Run the expanded `UTI.Tests.BeanLoggerTests` (10 new tests: JSON write/format/extras, append-across-reopen, the CSV+JSON explicit-`FilePath`-collision fallback, `ApplyConfigDefaults`) + `UTI.Tests.BeanConfigTests` (2 new `DefaultOutputTargets` parse tests) | All pass: one JSON object per sample, no header; `extras` a real nested object (`null` when unset); append/truncate-on-reopen matches CSV's existing behavior exactly; both CSV and JSON active with an explicit `FilePath` set falls back to separate default paths instead of colliding | project 2 | **Built and verified live 2026-08-08, both before and after a same-day refactor.** This picked up a prior session's unverified, paused-mid-task work (see `HANDOFF.md`'s former "open problem" — a suspected compile error spamming `project 2`'s console). Checked directly via this session's own Unity MCP connection: `UTI.JsonlBeanOutput` resolved cleanly in the loaded `UTI.Runtime` assembly, 0 console errors, full EditMode suite 97/97 via `TestRunnerApi` (not just re-run, driven live and its `TestResults.xml` read back directly). The suspected console-spam cause was never real — both compiled clean the whole time. Once `JsonlBeanOutput` existed alongside `CsvBeanOutput`, their identical `StreamWriter`-lifecycle code (directory creation, flush-interval batching, `Close()`) was extracted into a shared `BeanFileOutputBase` (see `DESIGN.md` §8.2); re-ran the same 97/97 suite immediately after with 0 regressions. | 2026-08-08 |
 | T30 | Package/Install, BeanVisualizer, BeanSnapshotExporter | First-ever fully external install: a fourth test project (`first project`, a real flight/combat game - `BeanController`, `Bullet`, `ExplosionFireball`, `EnvironmentHazard`, `PropellerSpin` - with zero prior UTI exposure) installs UTI from the **public GitHub URL** (not a local `file:` reference) and attaches Beans to its own existing gameplay, per the Bring-Your-Own-Test Protocol (DESIGN.md Sec 12), to directly verify `BeanVisualizer`'s live gizmo trail (T05) and `BeanSnapshotExporter`'s snapshot output with their own eyes | See the relay prompt below | Package installs cleanly from the GitHub URL; a real, independently-run report on whether the live gizmo line is actually visible, and whether snapshot PNGs show a real path line | first project | Planned — relay prompt sent, not yet run | 2026-08-09 |
 
-## T05 Investigation Notes (`BeanVisualizer`'s live gizmo render — still open)
+## T05 Investigation Notes (`BeanVisualizer`'s live gizmo render — resolved 2026-08-09)
 
 `BeanVisualizer` is one of UTI's four core pieces, and the one the "hit Play, see the trail" pitch
-is most directly named for. Its Scene-view line has never been confirmed rendering, in any session,
-before or after any other feature in this project existed. This section exists because the table
-cell above stopped being able to honestly hold the full story — five real attempts, one of them a
-Pass that had to be reverted. Kept as its own section so the next session (or the next person) can
-actually follow the reasoning instead of just seeing "Planned" and assuming nothing's been tried.
+is most directly named for. This section exists because the table cell above stopped being able to
+honestly hold the full story partway through — eight real attempts across two projects, one of them
+a Pass that had to be reverted, before a real, first-hand, independently-trustworthy confirmation
+finally landed. Kept as its own section, even now that it's resolved, so the reasoning (and the
+earlier false start) stays visible instead of the final Pass looking like it came easily.
 
 ### Current status
 
-**Planned. Not Pass.** No session has yet produced a gizmo-line observation it can both (a) point to
-directly and (b) independently verify was real, live, and not stale/cached tooling output.
+**Pass, confirmed 2026-08-09 (attempt 8).** The user personally ran `project 2`'s box-jump test and
+shared a real, first-hand screenshot — Scene view and Game view side by side, live in Play Mode,
+showing a clear yellow line tracing the actual path across the blue/yellow boxes. Direct, first-hand,
+from a known/already-verified project, arriving after everything upstream was independently
+confirmed across three separate projects — clears this doc's own "Pass only after a real, verified
+report" bar for real this time. See attempt 8 below for the full reasoning on why this one holds
+where the earlier reverted Pass didn't.
 
 ### What's been tried, in order
 
@@ -108,6 +113,70 @@ directly and (b) independently verify was real, live, and not stale/cached tooli
    once reproduced a visible line themselves. A result this session can't reproduce or verify
    doesn't clear this doc's own "Pass only after a real, verified report" bar, regardless of how
    sound the reasoning for it looked in the moment.
+6. **2026-08-09, `bitshot`, attempt 6 (T30-style independent round, real Bring-Your-Own-Test).**
+   Different failure mode than every prior attempt - not blocked by capture tooling at all this
+   time. `bitshot`'s own team attached the full 4-Bean stack to their real player object and ran
+   their own T11/T12 PlayMode tests (their local labels - see the T30 live findings log above), but
+   the player never actually moved during either test run (confirmed via console output showing
+   `zProgress = 0.00`, matching UTI's own captured data exactly - the input-freeze bug is genuinely
+   in `bitshot`'s own code, tracked on their side as "T15," not a UTI defect). No movement means no
+   path for `BeanVisualizer` to draw or `BeanSnapshotExporter` to capture, so **this round is
+   inconclusive on T05's actual question too** - not because a screenshot tool failed to show
+   gizmos, but because there was never a real path to try to see in the first place. Team plans to
+   fix the input-freeze issue and retry. Real value gained anyway: strong new cross-project
+   confirmation that UTI's own mechanics are sound even under this degenerate no-movement case -
+   `EveryFixedUpdate` captured 151 samples over a 3s hold (matching Unity's 50Hz fixed timestep
+   almost exactly), CSV/JSON schemas and file placement matched docs exactly, multi-angle capture
+   wrote exactly 2 PNGs and single-angle exactly 1, zero UTI-side errors or exceptions throughout.
+   UTI told the truth about a boring/static result rather than silently failing or fabricating
+   movement - a real, if unglamorous, point in its favor. Full report in the T30 live findings log
+   above; scaffolding cleaned up afterward (temp test methods removed, asmdef reference and
+   `BeanConfig.txt` reverted), UTI package itself left installed for the retry.
+7. **2026-08-09, `bitshot`, attempt 7 (retry, same day, after their input-freeze bug was fixed).**
+   Real movement confirmed this time: T11 ~13m forward (z: -18 → -6.9, 245 samples), T12 ~18.4m
+   through the cover corridor with visible x-axis strafe weaving (151 `EveryFixedUpdate` samples
+   over a 3s hold, ~50Hz). **`BeanSnapshotExporter` PNGs confirmed showing real, legible path
+   lines** - not just "files exist": the team opened and visually inspected all 3 PNGs themselves
+   before reporting, and shared them here too, independently confirmed by this session directly
+   viewing the images - a clean, unambiguous yellow line through real room/cover-box geometry on
+   the `Auto`/`Above` angles; the `Side` angle line is real but smaller and partly hidden behind a
+   cover box for this lateral-weave path, a real (if minor) framing weak spot on that angle
+   specifically, not a rendering failure. **This is now the third independent project
+   (`little wings`, `project 2`, `bitshot`) confirming `BeanSnapshotExporter` renders a correct path
+   through real movement onto a durable, human-openable artifact.**
+   **Still does not close T05 itself, and the team said so honestly rather than blurring the two:**
+   `BeanVisualizer`'s live Gizmos-in-Scene-view path is a different code path from
+   `BeanSnapshotExporter`'s `Camera.Render()` capture, and this was an automated PlayMode test run,
+   not a human sitting at the Editor with Play Mode running and eyes on the Scene view - the report
+   explicitly flagged that gizmos can't be screenshotted from a headless/automated run, matching
+   this doc's own long-standing working theory below almost exactly, independently arrived at by a
+   different team. **T05's actual open question - does the gizmo line visibly render for a human
+   watching Play Mode live - remains unanswered**, now for a third independently-converging reason
+   (this session's own tooling, `little wings`/`project 2`'s tooling, and now `bitshot`'s own
+   automated test tooling) rather than three different explanations. The one thing that would
+   actually close it: a human physically at an Editor watching Play Mode, or a real screen capture
+   of that moment - not yet done this round, but everything else in the pipeline leading up to it is
+   now verified end-to-end, so it's a small, specific remaining ask rather than an open-ended one.
+8. **2026-08-09, `project 2`, attempt 8 — resolved.** The user personally reinstalled UTI from the
+   public GitHub URL, added `BeanTracker`+`BeanVisualizer` to the box-jump test object, ran the test,
+   watched the Scene view live, and shared a real screenshot: Scene view and Game view side by side,
+   in Play Mode, at the same moment. A clear yellow line traces the actual jump path through the
+   blue and yellow boxes in the Scene view, with the tracked character standing on the yellow box in
+   the Game view at that same instant. **Why this one holds where the earlier 2026-08-09 Pass had to
+   be reverted:** that one was a secondhand screenshot this session couldn't trace to a known
+   source/environment, and this session's own parallel live attempts never reproduced a line
+   themselves. This one is first-hand from the user directly, in `project 2` - a project this whole
+   investigation already knows deeply (T16/T17/T23/T24/T26/T27/T28) - arriving after every piece
+   upstream of it (install, real movement, correct sample data, `BeanSnapshotExporter`'s PNGs) had
+   already been independently confirmed across three separate projects this same day. Clears this
+   doc's own "Pass only after a real, verified report" bar honestly, not on strength of reasoning
+   alone. **One real caveat, flagged directly by the user, not yet root-caused:** the trail had a
+   short window before it started vanishing, needing more than one try to actually catch in a
+   screenshot. Possible explanations, none confirmed yet: `project 2`'s own `GameManager` was
+   already documented (attempt 3 above) as resetting live scene state shortly after Play Mode
+   starts, independent of `EditorApplication.isPlaying` - if that's still true, it would fully
+   explain a short window without implicating UTI at all. Worth a closer look only if it recurs or
+   actually gets in someone's way - not urgent now that the core question is answered.
 
 ### Hard facts and evidence gathered along the way
 
@@ -136,6 +205,9 @@ directly and (b) independently verify was real, live, and not stale/cached tooli
   to it. Same project, two different sessions, opposite outcomes. That contradiction was never
   resolved, only explained away by a theory (this session's tooling can't see gizmos at all) that's
   plausible and consistent with both outcomes, but not independently confirmed either way.
+  **Resolved 2026-08-09 by attempt 8:** the theory was right - live gizmos render fine, automated
+  capture tooling just can't see them. The magenta screenshot's outcome (line visible) was correct;
+  this session's own tooling-based attempt 5 was the one hitting a tooling limit, not a real absence.
 - **Every automated capture tool tried** (`Unity_Camera_Capture`, `Unity_SceneView
   _CaptureMultiAngleSceneView`) has, across two separate Unity Editor instances and five total
   attempts, never once shown a gizmo line - even in captures independently confirmed live,
@@ -157,30 +229,24 @@ directly and (b) independently verify was real, live, and not stale/cached tooli
   least consistent with (not proof of) it also mishandling or skipping the separate Gizmo rendering
   pass.
 
-### Working theory
+### Working theory (confirmed correct)
 
-The leading, best-supported explanation: **this session's available automated capture tooling does
-not render the Editor's Gizmo overlay layer at all**, independent of (and in addition to) sometimes
-also returning stale/cached frames. Scene geometry consistently renders correctly and live through
-these same tools; gizmos consistently don't, every time, regardless of project, framing, or whether
-the underlying data is verified correct. A genuine screen/window capture (the actual composited
-pixels shown on screen, not a synthetic re-render) should not have this limitation, which is
-consistent with - though not, on its own, proof of - the screenshots behind the reverted Pass being
-real. The gap isn't "does `BeanVisualizer` work" (the structural and indirect evidence all points
-yes); it's "get one observation this session - or a future one - can both point to and independently
-trust."
+The theory that held throughout: **automated capture tooling does not render the Editor's Gizmo
+overlay layer at all**, independent of (and in addition to) sometimes also returning stale/cached
+frames - while a genuine screen/window capture (the actual composited pixels shown on screen, not a
+synthetic re-render) has no such limitation. Three independent tooling stacks converged on the first
+half (this session's own, `little wings`/`project 2`'s, and `bitshot`'s own automated PlayMode
+tooling, attempt 7) without being told about each other's findings first. Attempt 8 confirmed the
+second half directly: a real human screen capture showed the line immediately, no special technique
+needed - exactly what the theory predicted. The gap was never "does `BeanVisualizer` work" - it was
+"get one observation, from any source, that can both point to and independently trust" - and attempt
+8 is that observation.
 
 ### What's next
 
-**T30's relay prompt (see below) is still the plan for the one thing that remains genuinely open** —
-it asks a completely independent project with no prior UTI exposure to attach Beans to their own
-real gameplay and directly, personally watch the Scene view during a real Play session, then give a
-direct yes/no on whether the line renders. That sidesteps this session's tooling problem entirely by
-using a human's own eyes on an interactive Editor window, same as the reverted screenshots tried to,
-but from a source whose install/setup this round can trace from a clean start. If it comes back yes,
-close T05 for real this time, with the report + evidence attached, not just reasoning. If it comes
-back no, that would be a genuinely important, different finding - and worth taking seriously rather
-than explained away as "just tooling" again.
+**Nothing - T05 is closed.** If the "trail vanishes quickly" caveat from attempt 8 (see above) ever
+gets in someone's way, `project 2`'s already-documented `GameManager` scene-reset behavior (attempt
+3) is the leading suspect and worth checking first before assuming a new UTI-side issue.
 
 ### 2026-08-09 (later): the actually-testable half closed for real - real evidence, not live pixels
 
@@ -314,6 +380,71 @@ Save, switch to the Unity Editor, let it recompile. "UTI (Unity Testing Inspecto
 Report back pass/fail (and any console errors) and I'll update this tracker + fix anything broken.
 
 **Verified in little wings (2026-08-06):** both pass. Package resolved cleanly, all 4 `BeanBufferTests` green. Still need to run this in `project 2` and `2d project 3` to confirm cross-project behavior — don't forget the `testables` entry there too.
+
+### T30 live findings log (updated as reports come in from `bitshot`)
+
+Working notes, not yet folded into the Change Log below — done once the round actually finishes.
+`bitshot` is a real multiplayer FPS project (new, unrelated to `little wings`/`project 2`/`2d project
+3`/`first project`), being used as a genuinely independent Bring-Your-Own-Test round, same spirit as
+T30/T27. Their own PlayMode test doc calls its two real gameplay tests "T11" (move forward changes
+player position) and "T12" (navigate the cover corridor) — **their own local labels, unrelated to
+this tracker's T11/T12 rows** (`CustomCapture`/`extras` and `EveryFixedUpdate`, both already Pass) —
+don't let the name collision overwrite those rows when this round's results land; fold `bitshot`'s
+findings into T05/T06 and whichever new rows fit instead.
+
+**Bugs/doc gaps found this round are tracked in `TESTS/BugTracker.md` now, not restated here in
+full** (BUG-05 through BUG-08: `BeanMouseTracker` + new Input System, `BeanLogger.OutputTargets`
+gotcha, `testables` doc framing, missing test-assembly `asmdef` guidance) — this section stays
+focused on what was actually verified.
+
+- **Install, compile, and `UTI > Setup Project` all confirmed clean.** Package added via
+  `manifest.json` (git URL not yet used this round - added directly, README's documented
+  alternative to the Package Manager UI), resolved with 0 compile errors, `UTI/BeanConfig.txt`
+  bootstrapped correctly. UTI's own internal `UTI.Tests` suite also ran clean inside `bitshot` —
+  102/102 - a genuine, independent confirmation that the package resolves and compiles correctly in
+  a brand-new project, even though it's the same tests already known green in this repo and doesn't
+  say anything new about whether the *feature* works for `bitshot`'s own gameplay. (Why they ran
+  this at all instead of going straight to real-gameplay verification: `TESTS/BugTracker.md` BUG-07.)
+- **The `Reset()`-hook script-vs-Inspector question was never answered in the final report** - the
+  thread was raised mid-session but doesn't appear in the written findings below. Not a bug either
+  way (see `BugTracker.md`'s "confirmed NOT a bug" section) - still worth actually checking next
+  time it comes up, just wasn't this round.
+- **Round outcome: T11/T12 ran mechanically clean, but never exercised real movement, so T05's
+  actual question stays unanswered - see T05 Investigation Notes' new "attempt 6" above for the
+  full writeup.** Root cause confirmed as `bitshot`'s own input-freeze bug (tracked on their side as
+  "T15"), not a UTI defect - UTI's own captured data (`zProgress = 0.00`) matched the console output
+  exactly, meaning UTI told the truth about a static object rather than silently failing or
+  fabricating movement. Real value gained anyway: `EveryFixedUpdate` captured 151 samples over a 3s
+  hold (~50Hz, matching Unity's fixed timestep almost exactly), CSV/JSON schema and file placement
+  matched docs exactly, multi-angle capture wrote exactly 2 PNGs and single-angle exactly 1, zero
+  UTI-side errors throughout - strong new cross-project confirmation of T11/T12/T13/T16/T17-style
+  mechanics, independent of the T05 question itself. Scaffolding cleaned up afterward (temp test
+  methods removed, asmdef reference and `BeanConfig.txt` reverted to pre-eval state, verified
+  compiling clean); UTI package itself left installed since the team plans to fix the input-freeze
+  issue and retry. **Team's own final verdict, worth recording verbatim in spirit: "Solid,
+  well-scoped tool... low-friction, honest about what it does and doesn't do... would use again."**
+  Also flagged as a nice-to-have, not a gap: a loader to replay a saved CSV back through
+  `BeanVisualizer` (already noted as a stretch goal in the code's own comments) would close the
+  "review after the fact" loop.
+- **Real incident while setting up the manual gizmo-line check (2026-08-09, after attempt 7):
+  adding `BeanTracker`/`BeanVisualizer` directly to `bitshot`'s networked player prefab
+  (`ArmaturePlayer_Rifle.prefab`) broke the player's real gameplay components — confirmed not a UTI
+  defect.** `bitshot` uses Netcode-for-Entities, where GameObject prefabs get baked into ECS
+  subscenes; editing the prefab asset directly (adding *any* new MonoBehaviour, not something
+  specific to Beans) without triggering a re-bake left `FirstPersonController` never activating —
+  the player couldn't move or look, though unrelated UI (menu/quit) still worked. `bitshot`'s own
+  agent root-caused and reverted it correctly, including a second self-introduced bug along the way
+  (`AutoHostBootstrap` left enabled, racing their own automated tests' boot logic) — both confirmed
+  fixed via 2 clean reruns of their 4-test suite. **Zero UTI code involved in either bug** -
+  `BeanTracker`/`BeanVisualizer` are inert MonoBehaviours that don't touch component activation,
+  netcode, or baking; any other newly-added component on that same prefab, added the same way, would
+  hit the identical failure. Fix going forward (zero code changes needed): add Beans at runtime to
+  an already-spawned instance instead of editing the shared prefab asset - which is arguably how
+  UTI's meant to be used everywhere anyway, and sidesteps the baking risk entirely. Logged as a
+  Roadmap "Feature ideas" entry in `docs/PROJECT_OVERVIEW.md` (not `BugTracker.md` - consuming
+  project's own architecture, not a UTI defect, same standing rule as T27's finding) since it's a
+  real, generally useful thing worth better docs (or possibly a code-level accommodation) for anyone
+  using UTI with an ECS/DOTS/networked-prefab pipeline.
 
 ## How to verify T13/T16/T17 (final round — `BeanLogger` + `BeanSnapshotExporter`)
 
@@ -542,6 +673,61 @@ Working notes, not yet folded into the Change Log below — done once the round 
 
 ## Change Log
 
+- 2026-08-09 22:33 — **T05 CLOSED — Pass, confirmed for real.** The user personally reinstalled UTI
+  in `project 2` from the public GitHub URL, added `BeanTracker`+`BeanVisualizer` to the box-jump
+  test object, ran it, watched the Scene view live, and shared a real first-hand screenshot: Scene
+  view and Game view side by side in Play Mode, a clear yellow line tracing the actual jump path
+  through the blue/yellow boxes. Eight attempts total, across `little wings`/`project 2`/`bitshot`
+  and one reverted premature Pass, before this one actually cleared the "real, verified report" bar
+  — first-hand this time, from a known/already-verified project, after everything upstream was
+  independently confirmed across three separate projects the same day. Updated T05's table row to
+  **Pass**, closed out the Investigation Notes' Current Status/Working Theory/What's Next sections,
+  and resolved the long-standing "`little wings` gave contradictory results" open thread — the
+  working theory was right the whole time: gizmos render fine live, automated capture tooling just
+  can't see them. One real, un-root-caused caveat the user flagged directly: the trail had a short
+  window before starting to vanish, needing more than one try to screenshot — logged as a lead
+  (possibly `project 2`'s already-documented `GameManager` scene-reset behavior from attempt 3), not
+  urgent now that the core question is answered.
+- 2026-08-09 21:24 — **`bitshot` retry (attempt 7) landed same day: real movement confirmed, real
+  legible `BeanSnapshotExporter` path-line PNGs viewed directly (by both `bitshot`'s team and this
+  session) — third independent project to confirm that component under genuine movement. T05 itself
+  still open, honestly** — that's a different code path from `BeanVisualizer`'s live Gizmos, and
+  `bitshot`'s own automated PlayMode tooling independently hit the same "can't screenshot gizmos"
+  wall this doc's working theory has described for a while, without being told about it first —
+  real convergent evidence for *why* every attempt keeps stalling at the same place, even though the
+  place itself hasn't moved. Updated T05's table row, added "attempt 7" to Investigation Notes,
+  sharpened the Working Theory and What's Next sections to reflect that the remaining gap is now one
+  narrow, specific thing (a human watching Play Mode live, or a real screen capture of that moment)
+  rather than an open-ended "is any of this real" question. Full detail above.
+- 2026-08-09 21:12 — **Bug tracking split into a new `TESTS/BugTracker.md`, per direct user
+  request** — this doc's job is "does the test pass," not "what's broken," and bugs had been
+  accumulating as prose inside test rows/Change Log entries here, making "what's still open" hard to
+  answer at a glance. Backfilled the new doc with every confirmed UTI-side bug found across this
+  project's history (CS0104 x2, `BeanSnapshotExporter`'s leaked-GameObjects and ring-buffer-eviction
+  bugs, all already-fixed) plus today's four new findings from the `bitshot` round below (2 code
+  bugs, 2 doc gaps, all still open). Trimmed the T30 live findings log's bug paragraphs down to short
+  pointers at the new doc; left already-settled historical Change Log entries (this one included)
+  untouched rather than rewriting past history. Going forward, new bugs get logged in
+  `BugTracker.md` first.
+- 2026-08-09 21:02 — **`bitshot` round (T30-style) complete for now: inconclusive on T05 itself, but
+  for a well-diagnosed non-UTI reason, plus real new findings elsewhere.** Full team-authored report
+  covered install/setup (clean), the full 4-Bean stack attached to their real player object, and a
+  direct evaluation against this project's own "is it working / easy to use / issues / suggestions /
+  would you use it again" question list. The player never actually moved during either of their own
+  T11/T12 PlayMode tests (their own labels, not this tracker's) - root-caused to a genuine bug in
+  `bitshot`'s own input handling (tracked their side as "T15"), not UTI, and UTI's own captured data
+  matched the console's `zProgress = 0.00` exactly - so T05's live-render question remains open, but
+  because there was no real path to render at all, not because of capture tooling (every prior
+  attempt's blocker). New confirmed findings: `BeanMouseTracker` genuinely incompatible with
+  new-Input-System-only projects (upgraded from suspected to confirmed), and a real undocumented
+  gotcha - `BeanLogger.OnEnable()` locks in `OutputTargets` at `AddComponent()` time, silently
+  ignoring later field changes without a manual `Close()`/`Open()`. Neither fix applied yet
+  (tracked for later). Strong incidental cross-project confirmation of T11/T12/T13/T16/T17-style
+  mechanics regardless (correct CSV/JSON schemas, exact expected PNG counts, `EveryFixedUpdate`
+  timing matching Unity's fixed timestep almost exactly, zero UTI-side errors even under this
+  degenerate no-movement case). Team's own verdict: would use it again. Full detail in the T30 live
+  findings log and T05 Investigation Notes' new "attempt 6" above. Scaffolding cleaned up on their
+  side; UTI itself stays installed for a retry once the input-freeze bug is fixed.
 - 2026-08-09 15:31 — **T05: closed the actually-testable half with real, mutation-verified proof,
   independent of live Unity/MCP entirely.** A fresh session (different from the one that ran
   attempts 1-5) found the Unity MCP connection attached to an unrelated project (`bitshot`, a new

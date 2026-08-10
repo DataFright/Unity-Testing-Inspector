@@ -178,6 +178,25 @@ These aren't new features so much as closing gaps between "works in a clean one-
   the existing four. Noted 2026-08-08, not designed or started — explicitly not meant to be built
   yet, just captured for later.
 
+- **Safer guidance (or a code-level accommodation) for adding Beans to DOTS/Netcode-for-Entities
+  subscene-baked "ghost" prefabs.** Found 2026-08-09 in `bitshot` (a Bring-Your-Own-Test round):
+  adding `BeanTracker`/`BeanVisualizer` directly to a networked ghost prefab *asset* (rather than to
+  an already-spawned instance at runtime) left the real gameplay components on that same prefab
+  never activating — a subscene re-bake the edit didn't trigger, a Netcode-for-Entities/DOTS
+  pipeline detail specific to how that project bakes prefabs, not anything UTI's own code does (any
+  newly-added MonoBehaviour would hit the same thing added the same way — nothing Bean-specific).
+  **Confirmed not a UTI defect** — full root-cause writeup in `TESTS/TestTracker.md`'s T30 findings
+  log. The immediate fix needs zero code changes and already works: add Beans at runtime to an
+  already-spawned instance instead of editing the shared prefab asset — arguably how UTI's meant to
+  be used everywhere anyway. Two real follow-ups, neither started: (1) document this pattern
+  explicitly for anyone on an ECS/DOTS/networked-prefab pipeline, since "don't edit the shared
+  prefab" isn't obvious without already knowing why; (2) genuinely open whether a low-effort
+  code-level accommodation is worth adding — not designed or scoped, needs someone who actually
+  knows Netcode-for-Entities baking, not guessed at. **Scope check, worth keeping honest:** this is
+  specifically a DOTS/Netcode-for-Entities subscene-baking quirk, not "UTI doesn't support
+  multiplayer" broadly — a GameObject-based netcode stack (Netcode for GameObjects, Mirror, Photon)
+  wouldn't hit this particular failure mode at all.
+
 ### Broader validation
 
 - Push past the "one Bean, clean demo" shape UTI's been verified in so far: many simultaneous
@@ -233,6 +252,13 @@ public repo.
 
 ## Change Log
 
+- 2026-08-09 21:52 — **Added a Roadmap "Feature ideas" entry for DOTS/Netcode-for-Entities
+  ghost-prefab compatibility**, per direct user request to track it as a future TODO rather than let
+  it drop once the immediate `bitshot` incident was resolved. Confirmed not a current UTI defect
+  (root cause is bitshot's own subscene-baking pipeline, not UTI's code) — scoped honestly as a
+  documentation gap plus a genuinely open "would a code-level accommodation be worth it" question,
+  not as "UTI doesn't work with multiplayer." Full incident writeup: `TESTS/TestTracker.md`'s T30
+  findings log.
 - 2026-08-09 10:05 — **Full outside project review, then two follow-ups landed.** A fresh review
   (code + docs + tests, no prior-session context) graded the project overall B+ — strong marks for
   architecture/decoupling/error-handling discipline and the honesty of the Pass/Planned tracking,

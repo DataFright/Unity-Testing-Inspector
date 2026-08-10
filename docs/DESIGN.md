@@ -479,7 +479,7 @@ covers the actual logic.
 1. `BeanSample` (data struct) + circular buffer implementation.
 2. `BeanTracker` — capture loop, `OnSample` event, public start/stop/clear API. **Done, verified Pass** (T02) — all 4 `BeanTrackerTests` green in little wings after two fail→fix rounds (see Change Log).
 3. `IBeanOutput` interface + `BeanLogger` — console output first (fastest to verify), then CSV output. **Done, verified Pass** (T09) — all 4 `BeanLoggerTests` green in little wings.
-4. `BeanVisualizer` — gizmo path draw, then decimation + color modes once the basic line works. **Automated logic verified Pass** (T10) — all 6 `BeanVisualizerTests` green in little wings. Actual Scene-view rendering (T05/T06) still Planned — briefly marked Pass 2026-08-09 on the strength of screenshots this session didn't itself produce and couldn't independently verify, then reverted per direct user correction once this session's own live attempts (including real Play Mode) never reproduced a visible gizmo line themselves. See `TESTS/TestTracker.md`'s T05 row for the full history.
+4. `BeanVisualizer` — gizmo path draw, then decimation + color modes once the basic line works. **Automated logic verified Pass** (T10, plus `DrawPath()`'s own draw-call sequence directly, added 2026-08-09) — all EditMode tests green. **Scene-view rendering (T05): Pass, confirmed 2026-08-09** — after a reverted premature Pass earlier the same day and eight total attempts across three projects, the user personally ran `project 2`'s box-jump test and shared a real, first-hand screenshot showing the live gizmo line rendering correctly next to the Game view at the same moment. T06 (decimation at realistic scale) remains Partial. See `TESTS/TestTracker.md`'s T05 row and Investigation Notes for the full eight-attempt history.
 5. `package.json` + `Runtime`/`Tests` asmdefs — turn the folder into a real installable UPM package. *(Done early, out of order, so BeanBufferTests could actually run — see Change Log. `Editor.asmdef` still deferred until there's real Editor-only code to isolate.)*
 5.5. `BeanSnapshotExporter` — persisted scene+path artifact (§8.4). **Verified Pass live in little wings (T16/T17)** — real capture confirmed on the filesystem, correct path line, correct scene geometry. Since verification: gained `DimensionMode` override and a broadside-framing fix (§8.4), neither re-verified yet.
 5.6. `BeanArtifactPaths` + `BeanMouseTracker` + `BeanConfig` — shared output-location helper (§8.5), mouse-input tracking proxy (§8.6), and project-wide default-settings asset (§8.7), all added 2026-08-07. Unit-tested; `BeanMouseTracker`'s live input-reading path and `BeanConfig`'s live Editor `Reset()` behavior not yet verified in Play Mode/the Editor.
@@ -806,6 +806,10 @@ documents for the rest of `BeanConfig`'s real file I/O (§8.7's Testability para
 
 ## Change Log
 
+- 2026-08-09 22:33 — **T05 closed — `BeanVisualizer`'s live Scene-view gizmo confirmed rendering for
+  real.** Full history in `TESTS/TestTracker.md`'s T05 row/Investigation Notes (eight attempts, one
+  reverted premature Pass, then a first-hand user screenshot in `project 2` that finally cleared the
+  verification bar). §8.3 and §9's milestone list updated to Pass.
 - 2026-08-09 15:34 — **`BeanVisualizer.DrawPath()` given an injectable `IGizmoDrawer` seam, closing
   a real test-coverage gap found while reviewing T05's history.** Full reasoning and the local,
   mutation-verified 102/102 EditMode run in §8.3 above and `TESTS/TestTracker.md`'s T05 notes. Proves

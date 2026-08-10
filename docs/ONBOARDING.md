@@ -47,6 +47,9 @@ UTI/                            (this repo — package source, not a Unity proje
     PlayMode/                   scaffold only — no tests populated yet (see Known Gaps below)
     TestTracker.md              feature-by-feature verification status, honest Planned/Pass/Partial
     ErrorHandlingTracker.md     one row per guarded system boundary, same rigor as TestTracker
+    BugTracker.md                confirmed defects/doc gaps and their fix status (added 2026-08-09;
+                                 decoupled from TestTracker - that doc tracks pass/fail, this tracks
+                                 what's actually broken)
   docs/
     ONBOARDING.md                this file
     DESIGN.md                   architecture — how the pieces fit, why they're built this way
@@ -140,6 +143,7 @@ checkout.)
 | The pitch, Roadmap, full project history | `docs/PROJECT_OVERVIEW.md` |
 | What's actually verified vs. still Planned | `TESTS/TestTracker.md` |
 | Which system boundaries are guarded and how well-verified the guard is | `TESTS/ErrorHandlingTracker.md` |
+| What's actually broken right now, and what's already been fixed | `TESTS/BugTracker.md` |
 | What happened last session / open blockers | `docs/HANDOFF.md` (local-only) |
 | The standing behavioral rules for working on this repo | `CLAUDE.md` (local-only) |
 | How an end user sets up/uses UTI in their game | `docs/USAGE.md` |
@@ -179,3 +183,6 @@ checkout.)
 - 2026-08-08 22:50 — Updated once more same day: CI is now confirmed fully working (real green
   pass, not just "exists") after three more real bugs were found and fixed past the dot-folder one.
   Known Gaps section corrected to stop describing it as unverified.
+- 2026-08-09 21:20 — Added `TESTS/BugTracker.md` to the file map and lookup table — a new third
+  tracking doc (bugs/doc-gaps, decoupled from `TestTracker.md`'s pass/fail focus), see `CLAUDE.md`
+  and the new doc itself for the full rationale.
