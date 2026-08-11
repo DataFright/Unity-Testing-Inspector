@@ -19,30 +19,48 @@ jobs:
     # use - https://github.com/buildalon/unity-setup/issues/57). This repo is public, so GitHub
     # gives unlimited free minutes on any OS - no cost tradeoff either way.
     runs-on: windows-latest
-    # A healthy run so far: ~13 min to install Unity, seconds to activate the license, then the
-    # actual test step (97 fast, logic-only tests, no rendering) should finish in a couple minutes.
-    # A hard cap so a genuine hang (found live 2026-08-08 - see DESIGN.md Sec 12) fails loudly
-    # instead of silently occupying a runner for hours.
-    timeout-minutes: 30
+    # Raised from 30 to 60 on 2026-08-11, deliberately. This cap still exists to catch a genuine
+    # hang (found live 2026-08-08 - see DESIGN.md Sec 12) rather than silently occupying a runner
+    # for hours, but 30 was too tight for one specific thing: @actions/cache's saveCache() runs in
+    # the POST-job phase, which a job-level timeout also covers. The first (cache-seeding) run has
+    # to install Unity AND compress/upload it, and 30 minutes killed that save mid-write - which is
+    # what made caching look permanently broken. See the "Install Unity" step below.
+    # Only the seeding run needs this headroom; a cache-hit run finishes in a fraction of it, since
+    # timeout-minutes is a cap, not a reservation.
+    timeout-minutes: 60
     steps:
       - name: Checkout UTI
         uses: actions/checkout@v4
 
-      # cache-installation reverted 2026-08-09: it caused a real, confirmed regression rather
-      # than a speedup. Root cause (from buildalon/unity-setup's own source, src/inputs.ts, not
-      # guessed): leaving both build-targets and modules unspecified silently installs the
-      # platform's IL2CPP module (windows-il2cpp here) by default, even though this job never
-      # builds a Player - EditMode tests only need the bare Editor. That extra payload made the
-      # cache-save step (a tar+zstd compress of the whole install) expensive enough to push a real
-      # run to 35 minutes, past the 30-minute timeout, right in the middle of saving the cache -
-      # so the cache never finished, and the next run stayed cold anyway. No documented or
-      # source-confirmed way to suppress the default IL2CPP module was found (checked the README
-      # and source directly rather than guessing at one under time pressure), so caching is
-      # reverted for now rather than risk another broken run. See DESIGN.md Sec 12.
+      # cache-installation re-enabled 2026-08-11, after the 2026-08-09 revert turned out to rest
+      # on a misdiagnosis. Caching is not broken; two separate real problems were stacking, and
+      # both are fixed here. Root-caused by reading unity-setup's own source, not by guessing:
+      #
+      # 1. "modules: None" - the IL2CPP opt-out that a prior pass concluded didn't exist.
+      #    src/inputs.ts only applies its platform default (getDefaultModules() -> windows-il2cpp
+      #    here) when BOTH build-targets and modules are empty:
+      #        if (buildTargets.length == 0 && modulesInput.length === 0) { ...defaults... }
+      #    and getArrayInput('None') returns ['None'] - length 1, not 0 - so passing it skips that
+      #    branch entirely. The module loop then hits `if (module.toLowerCase() == 'none') continue;`
+      #    and adds nothing, leaving zero modules (the action even logs "> None" for that case, so
+      #    it's an anticipated state, not a hack). This job runs EditMode tests and never builds a
+      #    Player, so the IL2CPP payload was pure cost in both install time and cache size.
+      #
+      # 2. The job timeout, which was the actual killer. @actions/cache's saveCache() runs in the
+      #    POST-job phase, covered by timeout-minutes - so the old 30-minute cap killed the save
+      #    mid-write, nothing persisted, and every later run missed and re-attempted the same
+      #    doomed save. It reads as "caching makes every run slower forever," but the code only
+      #    saves on a miss (`if (cacheHit) ... return`), so that compress+upload is a ONE-TIME
+      #    seeding cost that simply never got the headroom to finish once. Timeout raised above.
+      #
+      # Cache key is `unity-setup-{platform}-{version}-{modules...}`, so dropping the module also
+      # changes the key - no collision with the earlier failed attempt's partial state.
       - name: Install Unity
         uses: buildalon/unity-setup@v2
         with:
           unity-version: 6000.5.6f1
+          modules: None
+          cache-installation: true
 
       # Live login each run, correctly bound to this runner's HardwareId - not a pre-generated
       # license file. A license file exported from any one machine (including a maintainer's own
