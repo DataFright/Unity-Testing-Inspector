@@ -36,11 +36,16 @@ Thumbs.db
 /CI~/Builds/
 /CI~/EditMode-results.xml
 
-# Internal-only working docs (AI-agent instructions, cross-session handoff notes) - not meant for
-# the public package/repo. Ignoring the file AND its paired .meta together, same as any other file
-# fully excluded from the repo - this is NOT a blanket "ignore all .meta files" rule, see the note
-# in docs/DESIGN.md / README.md about why real asset .meta files must stay tracked.
+# Internal-only working docs (AI-agent instructions, cross-session handoff notes, internal history
+# files split out of the public tracker docs) - not meant for the public package/repo. Ignoring the
+# file AND its paired .meta together, same as any other file fully excluded from the repo - this is
+# NOT a blanket "ignore all .meta files" rule, see the note in docs/DESIGN.md / README.md about why
+# real asset .meta files must stay tracked.
 /CLAUDE.md
 /CLAUDE.md.meta
+/CLAUDE_HISTORY.md
+/CLAUDE_HISTORY.md.meta
 /docs/HANDOFF.md
 /docs/HANDOFF.md.meta
+/TESTS/TestTracker_HISTORY.md
+/TESTS/TestTracker_HISTORY.md.meta
