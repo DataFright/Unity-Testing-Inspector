@@ -183,13 +183,12 @@ the live-only gizmo trail.
 
 - 2026-08-08 — Added the JSON Lines output section (`BeanLogger.Output Targets`' new `Json` flag)
   — format, why it exists alongside CSV (structured `extras`, not just "another format"), and how
-  to read it one line at a time rather than as a single JSON document. Verified live in `project 2`
-  (clean compile, 97/97 EditMode tests).
-- 2026-08-08 — Documented a second, distinct close-up/invisible-line symptom (T28,
-  `TESTS/TestTracker.md`): real movement followed by a long idle tail can silently evict the whole
-  path from the live sample buffer before a snapshot happens — different mechanism from the
-  near-stationary-path case below, now both covered. Also noted `BeanVisualizer`'s live trail
-  shares the same underlying buffer, so a long session can shrink it the same way.
+  to read it one line at a time rather than as a single JSON document.
+- 2026-08-08 — Documented a second, distinct close-up/invisible-line symptom: real movement
+  followed by a long idle tail can silently evict the whole path from the live sample buffer before
+  a snapshot happens — different mechanism from the near-stationary-path case below, now both
+  covered. Also noted `BeanVisualizer`'s live trail shares the same underlying buffer, so a long
+  session can shrink it the same way.
 - 2026-08-08 — Documented multi-angle snapshot naming/reading, the near-stationary-path close-up
   symptom and its fix (`Min Framing Radius`), and added a CSV-reading note about "frozen position
   at a value matching known geometry usually means physically stuck, not a tracking bug" — a

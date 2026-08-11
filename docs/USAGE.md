@@ -275,16 +275,12 @@ the compiled-in defaults, ready to edit. Full field-by-field explanation is in
 ## Change Log
 
 - 2026-08-08 — Documented the new JSON Lines output (`BeanLogger.Output Targets` gained `Json`
-  alongside `Console`/`Csv`) and `BeanConfig`'s new `DefaultOutputTargets` key (§4, §8, §9) —
-  verified live in `project 2` (clean compile, 97/97 EditMode tests, no console errors).
-- 2026-08-08 — Documented a real, found-live bug (T28, `TESTS/TestTracker.md`): `BeanSnapshotExporter`
-  frames/draws from the live sample buffer, not the CSV, so a long idle tail after real movement can
-  silently evict the whole path before a snapshot happens. Now warns in the console when this could
-  be happening; added guidance to §3 and a new §9 recipe. Realized `BeanVisualizer`'s live trail
-  reads the exact same bounded buffer (same root cause, no code fix needed there — a live trail
-  only showing recent history is normal), so added a matching note to §5, and promoted the whole
-  thing to a clear, proactive best-practice bullet in "Known constraints, not bugs" rather than
-  leaving it as something you only discover after already hitting it.
+  alongside `Console`/`Csv`) and `BeanConfig`'s new `DefaultOutputTargets` key (§4, §8, §9).
+- 2026-08-08 — Documented a real bug and its fix: `BeanSnapshotExporter` frames/draws from the live
+  sample buffer, not the CSV, so a long idle tail after real movement can silently evict the whole
+  path before a snapshot happens. Now warns in the console when this could be happening; added
+  guidance to §3/§5/§9's "Known constraints" section (`BeanVisualizer`'s live trail shares the same
+  underlying buffer, so a long session can shrink it the same way).
 - 2026-08-08 — Documented `Min Framing Radius`, multi-angle `Capture Angles`, `BeanLogger.Append
   Across Reuse`, and the new `UTI > Setup Project (Config + Docs)` menu item. Also fixed §8, which
   had gone stale describing the old `Assets/UTI/BeanConfig.asset` `ScriptableObject` approach after

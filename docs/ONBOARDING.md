@@ -35,6 +35,7 @@ UTI/                            (this repo — package source, not a Unity proje
   package.json                  UPM package manifest
   LICENSE                       MIT
   CLAUDE.md                     local-only — standing behavioral rules for Claude sessions
+  CLAUDE_HISTORY.md             local-only — full narrative behind CLAUDE.md's rules, read as needed
   .github/
     workflows/tests.yml         CI — runs the EditMode suite on push to main
   CI~/                          minimal, scrubbed Unity project shell CI resolves tests from
@@ -46,14 +47,18 @@ UTI/                            (this repo — package source, not a Unity proje
     EditMode/                   all current automated tests (NUnit, run via Unity Test Runner)
     PlayMode/                   scaffold only — no tests populated yet (see Known Gaps below)
     TestTracker.md              feature-by-feature verification status, honest Planned/Pass/Partial
+    TestTracker_HISTORY.md      local-only — full investigation narrative + complete Change Log
     ErrorHandlingTracker.md     one row per guarded system boundary, same rigor as TestTracker
     BugTracker.md                confirmed defects/doc gaps and their fix status (added 2026-08-09;
                                  decoupled from TestTracker - that doc tracks pass/fail, this tracks
                                  what's actually broken)
   docs/
     ONBOARDING.md                this file
-    DESIGN.md                   architecture — how the pieces fit, why they're built this way
-    PROJECT_OVERVIEW.md         full pitch, Roadmap, and the complete Change Log since day one
+    DESIGN.md                   architecture — how the pieces fit, why they're built this way, now
+    DESIGN_HISTORY.md           full multi-round design narrative + complete Change Log (public)
+    PROJECT_OVERVIEW.md         pitch, Roadmap, and what's still open
+    PROJECT_OVERVIEW_HISTORY.md complete Change Log since day one + every shipped item's story
+                                 (public)
     HANDOFF.md                  local-only — cross-session "what's happening / what's next"
     USAGE.md / READING_LOGS_AND_VISUALS.md / CONFIG.md
                                  end-user docs — for a dev USING UTI in their game, not for
@@ -139,11 +144,12 @@ checkout.)
 
 | You want... | Read |
 |---|---|
-| Architecture, why something is built the way it is | `docs/DESIGN.md` |
-| The pitch, Roadmap, full project history | `docs/PROJECT_OVERVIEW.md` |
+| Architecture, why something is built the way it is, as of now | `docs/DESIGN.md` |
+| The pitch, Roadmap, what's still open | `docs/PROJECT_OVERVIEW.md` |
 | What's actually verified vs. still Planned | `TESTS/TestTracker.md` |
 | Which system boundaries are guarded and how well-verified the guard is | `TESTS/ErrorHandlingTracker.md` |
 | What's actually broken right now, and what's already been fixed | `TESTS/BugTracker.md` |
+| Deep historical narrative — multi-round design revisions, investigation sagas, the full Change Log — for any of the four docs above | that doc's own `<Name>_HISTORY.md`, e.g. `docs/DESIGN_HISTORY.md` |
 | What happened last session / open blockers | `docs/HANDOFF.md` (local-only) |
 | The standing behavioral rules for working on this repo | `CLAUDE.md` (local-only) |
 | How an end user sets up/uses UTI in their game | `docs/USAGE.md` |
@@ -186,3 +192,7 @@ checkout.)
 - 2026-08-09 21:20 — Added `TESTS/BugTracker.md` to the file map and lookup table — a new third
   tracking doc (bugs/doc-gaps, decoupled from `TestTracker.md`'s pass/fail focus), see `CLAUDE.md`
   and the new doc itself for the full rationale.
+- 2026-08-11 09:41 — Added the four new `_HISTORY.md` files (`CLAUDE_HISTORY.md`,
+  `docs/DESIGN_HISTORY.md`, `TESTS/TestTracker_HISTORY.md`, `docs/PROJECT_OVERVIEW_HISTORY.md`) to
+  the file map and lookup table, from a full docs condense pass — see
+  `docs/PROJECT_OVERVIEW_HISTORY.md`'s Change Log for the full restructure writeup.

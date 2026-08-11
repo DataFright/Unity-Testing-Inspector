@@ -73,9 +73,9 @@ trade for how few settings this actually has.
   format — the first `BeanConfig` key to affect `BeanLogger` rather than `BeanTracker`/
   `BeanSnapshotExporter`. `[Flags]`, so `Console,Json` (comma-separated) picks more than one output
   at once. See `READING_LOGS_AND_VISUALS.md` for the JSON Lines format itself.
-- 2026-08-08 — Added `DefaultMinFramingRadius` (T23 fix, see `TESTS/TestTracker.md`) and mentioned
-  the new **UTI > Setup Project (Config + Docs)** menu item, which bootstraps this file and copies
-  all three end-user docs in one step — the standard first-time-setup path going forward.
+- 2026-08-08 — Added `DefaultMinFramingRadius`, fixing snapshots that framed too tight on a
+  near-stationary path, and mentioned the new **UTI > Setup Project (Config + Docs)** menu item,
+  which bootstraps this file and copies all three end-user docs in one step.
 - 2026-08-07 — Switched from a `ScriptableObject` asset (`Assets/UTI/BeanConfig.asset`) to a
   plain text file (`<project root>/UTI/BeanConfig.txt`), per feedback that config should live in
   the same place as everything else UTI generates for this project, not split into `Assets/`.
