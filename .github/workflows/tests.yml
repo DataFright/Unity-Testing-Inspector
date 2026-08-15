@@ -80,15 +80,99 @@ jobs:
       # -logFile CI~/unity.log, not "-logFile -": found live 2026-08-08 (see DESIGN.md Sec 12) -
       # Windows applications don't have a real stdout handle by default, so "-logFile -" (which
       # streams to stdout fine on Mac/Linux) can silently hang the whole process on Windows
-      # instead of just failing to show output. A real file path avoids that entirely, and the
-      # next step prints/uploads it so the run is still debuggable either way.
-      - name: Run EditMode test suite
-        uses: buildalon/unity-action@v2
-        with:
-          project-path: CI~
-          args: >-
-            -runTests -batchmode -nographics -testPlatform EditMode
-            -testResults CI~/EditMode-results.xml -logFile CI~/unity.log
+      # instead of just failing to show output. A real file path avoids that entirely.
+      #
+      # TEMPORARY DIAGNOSTIC STEP, 2026-08-14 - replaces buildalon/unity-action for this run only.
+      # Run #16 hung here for 55+ minutes with zero log output; the wrapper
+      # (@rage-against-the-pixel/unity-cli) spawns Unity with all stdio ignored and no internal
+      # timeout of its own, so it can't tell a real hang from a slow-but-working run - see
+      # docs/HANDOFF.md for the full investigation so far. This launches Unity directly instead, so
+      # this step can poll it while it runs (process alive/CPU/Windows "Responding" state,
+      # unity.log's existence and growth, WerFault.exe - Windows' crash-dialog process, which would
+      # explain a silent hang if Unity crashed natively and is blocked on a dialog nothing in
+      # headless CI can dismiss - and any child processes). Root cause not yet confirmed; two new
+      # variables landed in the same run (modules: None, and a cache-restored rather than
+      # freshly-installed Editor). Once root-caused, revert to the plain buildalon/unity-action step
+      # (preserved in git history at commit 243070b) rather than keeping this permanently - it
+      # duplicates argument-building/exit-code handling the wrapper already does correctly.
+      #
+      # Inner max wait is 11 min, under this step's own 15-min timeout-minutes, so there's room to
+      # print the full diagnostic dump and let it upload before GitHub force-kills the step.
+      - name: Run EditMode test suite (with diagnostics)
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          $unityExe = "C:\Program Files\Unity\Hub\Editor\6000.5.6f1\Editor\Unity.exe"
+          $logFile = "CI~/unity.log"
+          $resultsFile = "CI~/EditMode-results.xml"
+          $unityArgs = @(
+            "-projectPath", "CI~",
+            "-runTests", "-batchmode", "-nographics",
+            "-testPlatform", "EditMode",
+            "-testResults", $resultsFile,
+            "-logFile", $logFile
+          )
+
+          Write-Host "Launching: $unityExe $($unityArgs -join ' ')"
+          $proc = Start-Process -FilePath $unityExe -ArgumentList $unityArgs -PassThru -NoNewWindow
+
+          $maxWaitSeconds = 660
+          $pollInterval = 20
+          $elapsed = 0
+
+          while (-not $proc.HasExited -and $elapsed -lt $maxWaitSeconds) {
+            Start-Sleep -Seconds $pollInterval
+            $elapsed += $pollInterval
+            $proc.Refresh()
+
+            $logExists = Test-Path $logFile
+            $logSize = if ($logExists) { (Get-Item $logFile).Length } else { 0 }
+            $cpuTime = try { $proc.TotalProcessorTime } catch { "?" }
+            $responding = try { $proc.Responding } catch { "?" }
+
+            Write-Host "[+${elapsed}s] PID=$($proc.Id) exited=$($proc.HasExited) responding=$responding cpu=$cpuTime logExists=$logExists logSizeBytes=$logSize"
+
+            $wer = Get-Process -Name WerFault -ErrorAction SilentlyContinue
+            if ($wer) {
+              Write-Host "  !! WerFault.exe detected (PID $($wer.Id -join ',')) - Unity likely crashed natively and is blocked on an interactive error dialog"
+            }
+
+            $children = Get-CimInstance Win32_Process -Filter "ParentProcessId = $($proc.Id)" -ErrorAction SilentlyContinue
+            if ($children) {
+              Write-Host "  children: $(($children | ForEach-Object { "$($_.ProcessId):$($_.Name)" }) -join ', ')"
+            }
+          }
+
+          if (-not $proc.HasExited) {
+            Write-Host "=== TIMED OUT after ${elapsed}s - Unity did not exit. Dumping diagnostics. ==="
+            Write-Host "--- Unity/related processes ---"
+            Get-Process | Where-Object { $_.ProcessName -match "Unity|WerFault|dotnet|VBCSCompiler" } |
+              Format-Table Id, ProcessName, Responding, CPU, WorkingSet -AutoSize | Out-String | Write-Host
+
+            if (Test-Path $logFile) {
+              Write-Host "--- $logFile (partial) ---"
+              Get-Content $logFile | Write-Host
+            } else {
+              Write-Host "$logFile still does not exist after ${elapsed}s"
+            }
+
+            $altLog = "$env:LOCALAPPDATA\Unity\Editor\Editor.log"
+            if (Test-Path $altLog) {
+              Write-Host "--- fallback Editor.log found at $altLog (Unity may be logging here instead) ---"
+              Get-Content $altLog -Tail 200 | Write-Host
+            }
+
+            Write-Host "=== killing PID $($proc.Id) ==="
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            exit 1
+          }
+
+          Write-Host "Unity exited after ${elapsed}s with code $($proc.ExitCode)"
+          if (Test-Path $logFile) {
+            Write-Host "--- last 100 lines of $logFile ---"
+            Get-Content $logFile -Tail 100 | Write-Host
+          }
+          exit $proc.ExitCode
 
       - name: Print Unity log
         if: always()
