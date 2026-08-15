@@ -32,35 +32,31 @@ jobs:
       - name: Checkout UTI
         uses: actions/checkout@v4
 
-      # cache-installation re-enabled 2026-08-11, after the 2026-08-09 revert turned out to rest
-      # on a misdiagnosis. Caching is not broken; two separate real problems were stacking, and
-      # both are fixed here. Root-caused by reading unity-setup's own source, not by guessing:
+      # cache-installation: re-enabled 2026-08-11 (see git history at 243070b for that reasoning -
+      # the 2026-08-09 revert rested on a real misdiagnosis: "modules: None" does exist, and the
+      # job timeout, not caching itself, killed the original cache-save). That fix was real and
+      # partly confirmed: run #16 AND run #17 both got genuine cache hits on "Install Unity" (4m8s,
+      # 4m12s - matching the ~4-7 min estimate). But BOTH of those cache-restored installs then
+      # failed to actually run Unity, in two DIFFERENT ways: #16 hung 55+ min with zero log output,
+      # #17 crashed in seconds with "Unity.dll failed to load" (exit -2147024770 =
+      # ERROR_MOD_NOT_FOUND). Every fresh (non-cached) install in this project's history has always
+      # worked. Disabled again pending investigation into why the cache-restored install is
+      # producing two different broken states from what should be the same cached bytes - see
+      # docs/HANDOFF.md for the full writeup and next-step reasoning.
       #
-      # 1. "modules: None" - the IL2CPP opt-out that a prior pass concluded didn't exist.
-      #    src/inputs.ts only applies its platform default (getDefaultModules() -> windows-il2cpp
-      #    here) when BOTH build-targets and modules are empty:
-      #        if (buildTargets.length == 0 && modulesInput.length === 0) { ...defaults... }
-      #    and getArrayInput('None') returns ['None'] - length 1, not 0 - so passing it skips that
-      #    branch entirely. The module loop then hits `if (module.toLowerCase() == 'none') continue;`
-      #    and adds nothing, leaving zero modules (the action even logs "> None" for that case, so
-      #    it's an anticipated state, not a hack). This job runs EditMode tests and never builds a
-      #    Player, so the IL2CPP payload was pure cost in both install time and cache size.
-      #
-      # 2. The job timeout, which was the actual killer. @actions/cache's saveCache() runs in the
-      #    POST-job phase, covered by timeout-minutes - so the old 30-minute cap killed the save
-      #    mid-write, nothing persisted, and every later run missed and re-attempted the same
-      #    doomed save. It reads as "caching makes every run slower forever," but the code only
-      #    saves on a miss (`if (cacheHit) ... return`), so that compress+upload is a ONE-TIME
-      #    seeding cost that simply never got the headroom to finish once. Timeout raised above.
-      #
-      # Cache key is `unity-setup-{platform}-{version}-{modules...}`, so dropping the module also
-      # changes the key - no collision with the earlier failed attempt's partial state.
+      # modules: None is NOT implicated and stays on its own merit - it's an install-time/size
+      # optimization only (IL2CPP is a build-target/scripting-backend module for Player builds;
+      # there's no real mechanism for its absence to break the base Editor launching for EditMode
+      # tests), confirmed real and working via unity-setup's own source (see git history at
+      # 243070b). The two different symptoms from what should be one deterministic cached blob
+      # points at something non-deterministic in the restore/extraction itself, not a
+      # deterministic "the Editor needs this module" problem.
       - name: Install Unity
         uses: buildalon/unity-setup@v2
         with:
           unity-version: 6000.5.6f1
           modules: None
-          cache-installation: true
+          cache-installation: false
 
       # Live login each run, correctly bound to this runner's HardwareId - not a pre-generated
       # license file. A license file exported from any one machine (including a maintainer's own
