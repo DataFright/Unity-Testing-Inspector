@@ -275,6 +275,73 @@ warning and keeps going instead of crashing, exactly as designed (their warning-
 are the test passing, not a problem). License activated and deactivated cleanly, results artifact
 uploaded (38.4 KB). CI now runs the EditMode suite automatically on every push to `main`.
 
+### Round two, 2026-08-11 to 2026-08-15: re-enabling the cache broke CI twice more, for a real reason this time
+
+**Re-enabled `cache-installation`, correcting the round-one misdiagnosis.** The 2026-08-09 revert's
+"no way to suppress IL2CPP" conclusion turned out to be wrong — `buildalon/unity-setup`'s own
+`src/inputs.ts` explicitly handles `modules: None` (confirmed by reading the actual module-selection
+logic: `getArrayInput('None')` returns `['None']`, length 1 not 0, which skips the
+platform-default branch entirely; the loop then hits `continue` on the literal `'none'` and adds
+nothing — the action even logs `> None` for this case, an anticipated state, not a hack). Also
+re-diagnosed round one's real killer: `@actions/cache`'s `saveCache()` runs in the **post-job
+phase**, which the job's `timeout-minutes` also covers — the old 30-minute cap was killing the
+cache *save* mid-write on the very run that was supposed to seed it, not the actual test work.
+Raised to 60 minutes and re-enabled caching with `modules: None` to keep the cache small and the
+install fast.
+
+**Run #16: a genuine cache hit (4m8s Install Unity), immediately followed by a 55-minute silent
+hang with zero log output**, killed only by the job timeout. Traced as far as possible without
+authenticated log access (GitHub's job-logs API 403s even for a public repo without auth, and the
+Actions web UI requires sign-in past its summary page): `buildalon/unity-action`'s wrapper
+(`@rage-against-the-pixel/unity-cli`) has no internal timeout or hang-detection of its own — it
+spawns Unity with `stdio: ['ignore','ignore','ignore']` and just awaits process `close`, so a real
+hang and a slow-but-working run look identical to it and it gives zero diagnostic signal either
+way. Two new variables had landed in the same run (`modules: None`, and a cache-restored rather
+than freshly-installed Editor), not yet isolated.
+
+**Replaced the wrapper with a direct, polling PowerShell launcher for visibility**, rather than
+guessing blind: launches Unity via `Start-Process`, polls every 20s logging process
+alive/CPU/Windows "Responding" state, `unity.log`'s existence and growth, any `WerFault.exe`
+(Windows' crash-dialog process — would explain a silent hang if Unity crashed natively and got
+stuck on a dialog nothing in headless CI can dismiss), child processes, and a fallback check of
+Unity's default `Editor.log` location. Syntax parse-checked locally (PowerShell AST parser, 0
+errors) before pushing, since it couldn't be executed locally to test directly.
+
+**Run #17: the diagnostic launcher worked exactly as intended.** Instead of another opaque hang,
+Unity crashed in ~20 seconds with a specific, actionable error: `"Unity.dll failed to load. Make
+sure you meet Unity's system requirements."`, exit code `-2147024770` = `0x8007007E` =
+`ERROR_MOD_NOT_FOUND`. Ruled out the diagnostic script itself as the cause before trusting this:
+read `unity-cli`'s actual spawn options (`baseEditorEnv` only adds `UNITY_THISISABUILDMACHINE` and
+a build-pipeline logging flag on top of the inherited environment — nothing PATH- or
+module-loading-related — and no `cwd` override anywhere), so the crash wasn't an artifact of using
+`Start-Process` instead of the wrapper's `spawn()`. Confirmed via the Actions API that run #17's
+own "Install Unity" step *also* completed in 4m12s — another cache hit, same as run #16.
+
+**Reasoned to the real culprit rather than guessing between the two remaining variables.** Every
+fresh (non-cached) install in this project's entire history has worked. Both cache-restored
+installs failed, in two *different* ways, from what should have been identical cached bytes under
+one unchanged key — a genuinely broken-without-that-module Editor should fail the *same* way every
+time, not differently each run, whereas non-deterministic corruption during a multi-GB extraction
+(a race, antivirus interference, an incomplete/interrupted original save — run #15, the actual
+cache-seeding attempt, was itself cancelled mid-install at 29m57s, so what got cached may never
+have represented a fully-complete install to begin with) fits the two-different-symptoms pattern
+much better. There's also no real mechanism for IL2CPP's absence — a build-target/scripting-backend
+module for Player builds — to affect the base Editor's own DLL loading.
+
+**Disabled `cache-installation` again, kept everything else.** `modules: None` stayed (not
+implicated by any of this reasoning, and independently a real win). The diagnostic launcher stayed
+too, rather than reverting to the plain wrapper immediately — it had just proven itself catching a
+real failure fast, and its core exit-handling logic (`resolve(code === null ? 1 : code)` in the
+wrapper vs. `exit $proc.ExitCode` here) is equivalent to what the wrapper already does, so there
+was no meaningful correctness tradeoff to reverting for.
+
+**Run #18: fully green, 14m33s total, Install Unity 2m22s.** A fresh `modules: None` install is
+itself faster than the old default-module install ever was (~13 min historically) — confirming the
+IL2CPP opt-out is a genuine, standalone win independent of the caching question entirely.
+`cache-installation` stays off pending a dedicated investigation into *why* the restore was
+non-deterministically broken (not urgent — a reliably-working ~14.5-minute CI beats an
+unreliable faster one), and re-enabling it isn't recommended without understanding that first.
+
 ## §13 history: already-fixed limitations
 
 - **CSV file path collisions on duplicate GameObject names.** Fixed 2026-08-07:
@@ -344,6 +411,14 @@ returns `null` (compiled-in defaults apply) with a warning, matching the method'
 
 ## Full Change Log (since day one)
 
+- 2026-08-15 00:17 — CI cache round two closed: run #18 fully green (14m33s total, Install Unity
+  2m22s). `cache-installation` disabled again after two cache-restored installs failed differently
+  (a 55-min hang, then a `Unity.dll` load crash) from what should've been identical cached bytes —
+  non-deterministic restore corruption, not `modules: None`, which stayed and is itself a real
+  speed win. Full round-two writeup above.
+- 2026-08-14 23:14 — CI cache re-enabled (`cache-installation: true` + genuine `modules: None`
+  IL2CPP opt-out, job timeout 30→60min), correcting the 2026-08-09 misdiagnosis below — then hit a
+  new problem the same day (see the 2026-08-15 entry above for how it resolved).
 - 2026-08-09 22:33 — **T05 closed — `BeanVisualizer`'s live Scene-view gizmo confirmed rendering for
   real.** Full history in `TESTS/TestTracker_HISTORY.md`'s T05 Investigation Notes (eight attempts,
   one reverted premature Pass, then a first-hand user screenshot in `project 2` that finally cleared

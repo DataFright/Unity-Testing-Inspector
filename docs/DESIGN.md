@@ -414,10 +414,19 @@ consuming project. Push-only trigger, deliberately — only someone with write a
 License activation uses a live login each run (`UNITY_EMAIL`/`UNITY_PASSWORD` via
 `buildalon/activate-unity-license`), not a portable license file — Unity's newer licensing client
 binds exported license files to the machine that generated them, so a file from a dev machine
-would never validate on a GitHub runner. Confirmed green as of last run; full setup/debugging
-history (five live runs, four distinct real bugs, the `cache-installation` revert) is in
-`DESIGN_HISTORY.md` if a future run breaks and the same category of issue seems worth ruling out
-first.
+would never validate on a GitHub runner. Unity installs with `modules: None` (no IL2CPP — this job
+never builds a Player) via a fresh, uncached install each run (~2m22s, actually *faster* than the
+old default-module install) — `cache-installation` is deliberately **off**: two separate attempts
+to re-enable it both produced a cache-restored install that failed to run Unity at all, in two
+different ways, from what should've been the same cached bytes, pointing at non-deterministic
+cache-restore corruption rather than anything about `modules: None` itself. The test-run step also
+launches Unity directly with its own process-polling diagnostics rather than through
+`buildalon/unity-action`, kept deliberately (not just a leftover) since it already proved its worth
+catching that exact failure fast. Confirmed green as of the last run (14m33s total). Full
+setup/debugging history (nine live runs across two separate incidents, the cache-restore-corruption
+finding) is in `DESIGN_HISTORY.md` if a future run breaks and the same category of issue seems
+worth ruling out first — re-enabling `cache-installation` isn't recommended without first
+understanding why the restore was non-deterministically broken.
 
 ### The Bring-Your-Own-Test Protocol
 
@@ -500,19 +509,23 @@ Full boundary-by-boundary writeup (what each guard replaced, and the bugs found 
 
 ## Change Log
 
+- 2026-08-15 00:17 — **CI cache saga, round two: re-enabled, broke twice, disabled again with a
+  real root cause this time.** Re-enabling `cache-installation` (with the genuine `modules: None`
+  IL2CPP opt-out) produced a cache-restored Unity install that failed to actually run in two
+  different ways across two runs (a 55-minute silent hang, then a `Unity.dll failed to load` crash)
+  from what should've been identical cached bytes — pointing at non-deterministic cache-restore
+  corruption, not the module change. Disabled caching again; a fresh `modules: None` install runs
+  clean and is itself faster (2m22s) than the old default-module install ever was. Full
+  investigation: `DESIGN_HISTORY.md` §12.
 - 2026-08-11 09:41 — **Restructured for a full docs condense pass**: split the multi-round design
-  narrative (§8's iteration history, §12's CI setup saga, §13's resolved-limitation writeups, §14's
-  boundary-by-boundary bug stories) and the full historical Change Log out into
-  `DESIGN_HISTORY.md`, leaving this file as current-state architecture reference only. Genericized
-  §11's local machine paths. See `docs/PROJECT_OVERVIEW_HISTORY.md` for the full restructure
-  writeup covering all affected docs.
+  narrative and the full historical Change Log out into `DESIGN_HISTORY.md`, leaving this file as
+  current-state architecture reference only. See `docs/PROJECT_OVERVIEW_HISTORY.md` for the full
+  restructure writeup covering all affected docs.
 - 2026-08-09 22:33 — T05 (`BeanVisualizer`'s live Scene-view gizmo) confirmed Pass for real, after
   eight attempts across three projects — see `TESTS/TestTracker.md`'s T05 row.
 - 2026-08-09 15:34 — `BeanVisualizer.DrawPath()` given an injectable `IGizmoDrawer` seam (§8.3),
   closing a real test-coverage gap — proves the draw-call logic, not live pixel rendering.
-- 2026-08-09 13:17 — CI's `cache-installation` reverted after a live 35-minute timeout (§12).
-- 2026-08-09 10:05 — CI speedup (`cache-installation: true`) wired in; product naming standardized
-  on "Unity Testing Inspector" across previously-inconsistent files.
-- 2026-08-08 22:50 — CI confirmed fully green end to end, after four real bugs found and fixed.
+- 2026-08-09 13:17 — CI's `cache-installation` reverted after a live 35-minute timeout (§12) — the
+  first of the two cache incidents; see the 2026-08-15 entry above for how this eventually resolved.
 
 Full Change Log since day one: `DESIGN_HISTORY.md`.
