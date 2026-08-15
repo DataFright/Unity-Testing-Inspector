@@ -53,6 +53,11 @@ jobs:
       # tracker has other unresolved cache-triggered reports - #12, #55) - see docs/DESIGN.md Sec 12
       # and docs/DESIGN_HISTORY.md's "round three" section for the confirmed outcome either way.
       #
+      # Seed run (run #21, this commit) confirmed clean and uncancelled: Install Unity 14m59s
+      # (normal fresh-install cost), Post Install Unity (the actual cache-save) 6m34s, both green -
+      # unlike the run that poisoned the original entry, this one wasn't cut off. This commit exists
+      # to trigger the actual test: a second run restoring from this fresh entry.
+      #
       # modules: None stays regardless of this round's outcome - not implicated in any prior
       # failure, and a real win on its own (less downloaded/installed, never needed for this job).
       - name: Install Unity
