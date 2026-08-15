@@ -415,18 +415,23 @@ License activation uses a live login each run (`UNITY_EMAIL`/`UNITY_PASSWORD` vi
 `buildalon/activate-unity-license`), not a portable license file — Unity's newer licensing client
 binds exported license files to the machine that generated them, so a file from a dev machine
 would never validate on a GitHub runner. Unity installs with `modules: None` (no IL2CPP — this job
-never builds a Player) via a fresh, uncached install each run (~2m22s, actually *faster* than the
-old default-module install) — `cache-installation` is deliberately **off**: two separate attempts
-to re-enable it both produced a cache-restored install that failed to run Unity at all, in two
-different ways, from what should've been the same cached bytes, pointing at non-deterministic
-cache-restore corruption rather than anything about `modules: None` itself. The test-run step also
-launches Unity directly with its own process-polling diagnostics rather than through
-`buildalon/unity-action`, kept deliberately (not just a leftover) since it already proved its worth
-catching that exact failure fast. Confirmed green as of the last run (14m33s total). Full
-setup/debugging history (nine live runs across two separate incidents, the cache-restore-corruption
-finding) is in `DESIGN_HISTORY.md` if a future run breaks and the same category of issue seems
-worth ruling out first — re-enabling `cache-installation` isn't recommended without first
-understanding why the restore was non-deterministically broken.
+never builds a Player) via a fresh, uncached install each run — `cache-installation` is
+deliberately **off**: two separate attempts to re-enable it both produced a cache-restored install
+that failed to run Unity at all, in two different ways, from what should've been the same cached
+bytes, pointing at non-deterministic cache-restore corruption rather than anything about
+`modules: None` itself. **The original goal of this round — skip the ~13-minute install on repeat
+runs — is not met.** A fresh install (with or without the module) still takes roughly that long on
+a GitHub-hosted runner; the genuinely fast (~4 min) installs only happened on the two cache hits
+that then failed to actually run. `modules: None` stays anyway (smaller download/install
+regardless of timing, and never needed for this job), but CI is back to reliable, not fast — the
+real fix for install time would need the cache-restore corruption itself understood and fixed, not
+attempted yet. The test-run step also launches Unity directly with its own process-polling
+diagnostics rather than through `buildalon/unity-action`, kept deliberately (not just a leftover)
+since it already proved its worth catching a real failure fast. Confirmed green across two
+consecutive runs (14m33s and similar). Full setup/debugging history (ten live runs across two
+separate incidents, the cache-restore-corruption finding) is in `DESIGN_HISTORY.md` — re-enabling
+`cache-installation` isn't recommended without first understanding why the restore was
+non-deterministically broken.
 
 ### The Bring-Your-Own-Test Protocol
 
@@ -509,14 +514,22 @@ Full boundary-by-boundary writeup (what each guard replaced, and the bugs found 
 
 ## Change Log
 
+- 2026-08-15 00:31 — **Correction to the entry below: run #18's "Install Unity" was misreported as
+  2m22s** (an intermediate tool-summarization error, not re-verified against the raw API response
+  at the time) — it actually took **13m22s**, essentially the same as this project's historical
+  default-module install. The two genuinely fast (~4 min) installs only happened on the cache hits
+  that then failed to run. **This round's original goal — skip the ~13-min install on repeat
+  runs — was not met**; CI is reliable again, not fast. Caught by re-verifying against the raw
+  job-step timestamps after a direct question about whether the original goal had actually been
+  achieved. `modules: None` still stands on its own (smaller download regardless of timing), just
+  not as the "genuine speed win" this doc previously claimed.
 - 2026-08-15 00:17 — **CI cache saga, round two: re-enabled, broke twice, disabled again with a
   real root cause this time.** Re-enabling `cache-installation` (with the genuine `modules: None`
   IL2CPP opt-out) produced a cache-restored Unity install that failed to actually run in two
   different ways across two runs (a 55-minute silent hang, then a `Unity.dll failed to load` crash)
   from what should've been identical cached bytes — pointing at non-deterministic cache-restore
-  corruption, not the module change. Disabled caching again; a fresh `modules: None` install runs
-  clean and is itself faster (2m22s) than the old default-module install ever was. Full
-  investigation: `DESIGN_HISTORY.md` §12.
+  corruption, not the module change. Disabled caching again; see the correction above for the real
+  install-time figure. Full investigation: `DESIGN_HISTORY.md` §12.
 - 2026-08-11 09:41 — **Restructured for a full docs condense pass**: split the multi-round design
   narrative and the full historical Change Log out into `DESIGN_HISTORY.md`, leaving this file as
   current-state architecture reference only. See `docs/PROJECT_OVERVIEW_HISTORY.md` for the full

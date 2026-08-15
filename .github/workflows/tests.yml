@@ -30,21 +30,23 @@ jobs:
       - name: Checkout UTI
         uses: actions/checkout@v4
 
-      # cache-installation: OFF, confirmed the right call, not a placeholder - re-enabling it
-      # (243070b) got two genuine cache hits (runs #16, #17, ~4m each on "Install Unity") that then
-      # BOTH failed to actually run Unity, in two different ways (a 55-min silent hang, then a fast
-      # "Unity.dll failed to load" crash) from what should've been identical cached bytes under one
-      # unchanged key. Every fresh install in this project's history has worked, including the
-      # confirmed-green run right after disabling caching again (run #18, Install Unity 2m22s).
-      # Points at non-deterministic corruption during cache restore/extraction, not anything
-      # module-related. Re-enabling isn't recommended without first understanding that - full
-      # writeup: docs/DESIGN.md Sec 12, docs/DESIGN_HISTORY.md's "round two" section.
+      # cache-installation: OFF - re-enabling it (243070b) got two genuine cache hits (runs #16,
+      # #17, ~4m each on "Install Unity") that then BOTH failed to actually run Unity, in two
+      # different ways (a 55-min silent hang, then a fast "Unity.dll failed to load" crash) from
+      # what should've been identical cached bytes under one unchanged key. A fresh install (run
+      # #18, no cache) worked cleanly - confirming cache-restore itself is the broken piece, not
+      # modules: None - but took 13m22s, essentially the SAME as this project's historical
+      # ~13-minute default-module install. So the caching goal this round set out for (skip the
+      # ~13-min install on repeat runs) is NOT met - CI is reliable again, not fast. The genuinely
+      # fast ~4-minute installs only happened on the (broken) cache hits; a working, uncached
+      # install doesn't get that speedup on its own. Re-enabling caching isn't recommended without
+      # first understanding the restore corruption - full writeup: docs/DESIGN.md Sec 12,
+      # docs/DESIGN_HISTORY.md's "round two" section.
       #
-      # modules: None stays, confirmed real and beneficial on its own (not just "not implicated"):
-      # a fresh install with it is 2m22s, genuinely faster than the old default-module install ever
-      # was (~13 min). IL2CPP is a build-target/scripting-backend module for Player builds this job
-      # never needs - see unity-setup's own source, git history at 243070b, for how the opt-out
-      # actually works.
+      # modules: None stays anyway - not implicated in either failure, and a real (if smaller than
+      # hoped) win: less downloaded/installed regardless of install time, and this job never builds
+      # a Player so it never needed IL2CPP in the first place. See unity-setup's own source, git
+      # history at 243070b, for how the opt-out actually works.
       - name: Install Unity
         uses: buildalon/unity-setup@v2
         with:

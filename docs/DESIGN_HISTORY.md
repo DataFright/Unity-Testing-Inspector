@@ -329,18 +329,29 @@ much better. There's also no real mechanism for IL2CPP's absence — a build-tar
 module for Player builds — to affect the base Editor's own DLL loading.
 
 **Disabled `cache-installation` again, kept everything else.** `modules: None` stayed (not
-implicated by any of this reasoning, and independently a real win). The diagnostic launcher stayed
-too, rather than reverting to the plain wrapper immediately — it had just proven itself catching a
-real failure fast, and its core exit-handling logic (`resolve(code === null ? 1 : code)` in the
-wrapper vs. `exit $proc.ExitCode` here) is equivalent to what the wrapper already does, so there
-was no meaningful correctness tradeoff to reverting for.
+implicated by any of this reasoning). The diagnostic launcher stayed too, rather than reverting to
+the plain wrapper immediately — it had just proven itself catching a real failure fast, and its
+core exit-handling logic (`resolve(code === null ? 1 : code)` in the wrapper vs.
+`exit $proc.ExitCode` here) is equivalent to what the wrapper already does, so there was no
+meaningful correctness tradeoff to reverting for.
 
-**Run #18: fully green, 14m33s total, Install Unity 2m22s.** A fresh `modules: None` install is
-itself faster than the old default-module install ever was (~13 min historically) — confirming the
-IL2CPP opt-out is a genuine, standalone win independent of the caching question entirely.
-`cache-installation` stays off pending a dedicated investigation into *why* the restore was
-non-deterministically broken (not urgent — a reliably-working ~14.5-minute CI beats an
-unreliable faster one), and re-enabling it isn't recommended without understanding that first.
+**Run #18: fully green, 14m33s total.** Confirmed cache-restore itself was the broken piece — a
+fresh install (with or without the module) works cleanly. **Correction, found the same day after a
+direct question about whether the original "stop reinstalling Unity every push" goal had actually
+been met:** an earlier pass of this doc reported "Install Unity 2m22s" and framed `modules: None`
+as a genuine standalone speed win. That number was wrong — a summarization error never re-verified
+against the raw API timestamps at the time. The real figure, pulled directly from the job's raw
+step timestamps (`04:58:22Z` → `05:11:44Z`): **13m22s**, essentially identical to this project's
+historical ~13-minute default-module install. The two genuinely fast (~4 min) installs only
+happened on the cache hits that then failed to actually run (runs #16/#17 above) — a *working*
+install, cached or not, hasn't shown any real speedup in this round's actual data.
+**This round's original goal is therefore not met**: CI is reliable again, not fast.
+`modules: None` still stands on its own (smaller download/install regardless of timing, and this
+job never needed IL2CPP), just not for the timing reason previously claimed. `cache-installation`
+stays off pending a dedicated investigation into *why* the restore was non-deterministically
+broken — that investigation, if it ever succeeds, is the actual remaining path to the original
+~2-minute target, not anything shipped so far. Not urgent: a reliably-working ~14.5-minute CI beats
+an unreliable one of any speed.
 
 ## §13 history: already-fixed limitations
 
@@ -411,11 +422,15 @@ returns `null` (compiled-in defaults apply) with a warning, matching the method'
 
 ## Full Change Log (since day one)
 
-- 2026-08-15 00:17 — CI cache round two closed: run #18 fully green (14m33s total, Install Unity
-  2m22s). `cache-installation` disabled again after two cache-restored installs failed differently
-  (a 55-min hang, then a `Unity.dll` load crash) from what should've been identical cached bytes —
-  non-deterministic restore corruption, not `modules: None`, which stayed and is itself a real
-  speed win. Full round-two writeup above.
+- 2026-08-15 00:31 — Corrected a wrong figure from the entry below: run #18's "Install Unity" is
+  13m22s, not 2m22s (a summarization error, never re-verified against the raw API at the time) —
+  meaning this round's original "stop reinstalling Unity every push" goal was **not** actually
+  met. Caught after a direct question about whether the goal had been achieved. Full detail above.
+- 2026-08-15 00:17 — CI cache round two closed: run #18 fully green (14m33s total).
+  `cache-installation` disabled again after two cache-restored installs failed differently (a
+  55-min hang, then a `Unity.dll` load crash) from what should've been identical cached bytes —
+  non-deterministic restore corruption, not `modules: None` (see the 00:31 correction above for
+  the real install-time figure). Full round-two writeup above.
 - 2026-08-14 23:14 — CI cache re-enabled (`cache-installation: true` + genuine `modules: None`
   IL2CPP opt-out, job timeout 30→60min), correcting the 2026-08-09 misdiagnosis below — then hit a
   new problem the same day (see the 2026-08-15 entry above for how it resolved).
