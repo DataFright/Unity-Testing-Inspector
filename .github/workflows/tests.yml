@@ -19,53 +19,49 @@ jobs:
     # use - https://github.com/buildalon/unity-setup/issues/57). This repo is public, so GitHub
     # gives unlimited free minutes on any OS - no cost tradeoff either way.
     runs-on: windows-latest
-    # Round three, 2026-08-15: raised 25->60 again, temporarily, for this attempt's seed run only.
-    # Round two's actual killer wasn't cache-restore corruption in the abstract - it was that the
-    # ONLY cache entry that ever existed for this key was seeded by a run cut off by too tight a
-    # timeout mid-install/mid-save ("run #15"), and actions/cache never overwrites an existing key,
-    # so every later "re-enable caching" attempt (including both round-two runs) restored that same
-    # original, possibly-incomplete entry rather than ever getting a genuine clean reseed. This
-    # round: the stale cache entry was deleted by hand first, so this run seeds a real new one - the
-    # 60min headroom is so a fresh ~13-14min install + its cache-save post-step can't get cut off
-    # the same way again. Right-size back down to ~20-25 once a cache-hit run is confirmed green
-    # (see git history/DESIGN.md Sec 12 for the outcome).
-    timeout-minutes: 60
+    # Right-sized to 25 - a real confirmed-green run is ~14.5 min end to end; this stays a real
+    # multiple above that so a genuine hang still fails loudly within a bounded time instead of
+    # silently occupying a runner for up to an hour. cache-installation is OFF below (confirmed,
+    # not just currently-off) so no cache-save post-step headroom is needed either.
+    timeout-minutes: 25
     steps:
       - name: Checkout UTI
         uses: actions/checkout@v4
 
-      # cache-installation: ON again, round three, 2026-08-15 - re-enabling it twice before (round
-      # two: runs #16/#17) both got a cache hit that then failed to actually run Unity, in two
-      # different ways, from what should've been identical cached bytes under one unchanged key.
-      # Real reasoning for trying again rather than leaving this off for good: actions/cache never
-      # overwrites an existing key - it silently no-ops the save if one's already there - and the
-      # ONLY entry that ever existed for this key was seeded by a run cut off by the job timeout
-      # mid-install/mid-save ("run #15"). Every later restore, including both round-two runs, was
-      # very possibly restoring that same original incomplete entry, never a genuinely clean one.
-      # This attempt: the stale entry was deleted by hand first (GitHub gives no other way to force
-      # a reseed under this action's own opaque key - it doesn't expose a custom-key input), and
-      # timeout-minutes is raised to 60 for this run specifically so a full fresh install + its
-      # cache-save post-step has real headroom, unlike the run that poisoned the original entry.
-      # If a second, cache-hit run afterward comes back fast AND actually runs Unity successfully,
-      # that confirms the poisoned-key theory and this stays on. If it fails again under these
-      # cleaner conditions, that rules the theory out and points at something structural to
-      # Windows-runner + actions/cache + a payload this size (buildalon/unity-setup's own issue
-      # tracker has other unresolved cache-triggered reports - #12, #55) - see docs/DESIGN.md Sec 12
-      # and docs/DESIGN_HISTORY.md's "round three" section for the confirmed outcome either way.
+      # cache-installation: OFF, confirmed for good - round three, 2026-08-15. Three attempts now
+      # (round one, round two x2, round three), all failed. Round three ruled out every remaining
+      # "we just haven't seeded it cleanly" theory: deleted the old cache entries by hand, forced a
+      # guaranteed-uncancelled seed (run #21 - Install Unity 14m59s, its cache-save 6m34s, both
+      # genuinely clean), then a second run restored from that verified-clean entry and STILL failed
+      # - same exact error as round two's run #17, byte for byte: "Unity.dll failed to load", exit
+      # code -2147024770 (ERROR_MOD_NOT_FOUND), no unity.log ever created. Same failure from a
+      # provably good seed rules out a bad original save as the cause.
       #
-      # Seed run (run #21, this commit) confirmed clean and uncancelled: Install Unity 14m59s
-      # (normal fresh-install cost), Post Install Unity (the actual cache-save) 6m34s, both green -
-      # unlike the run that poisoned the original entry, this one wasn't cut off. This commit exists
-      # to trigger the actual test: a second run restoring from this fresh entry.
+      # The real reason, found directly from buildalon/unity-setup's own maintainer (issue #55,
+      # https://github.com/buildalon/unity-setup/issues/55): "cache-installation is only valid for
+      # self hosted runners" - and, asked why it doesn't just no-op on GitHub-hosted ones instead of
+      # failing: "Hmm maybe it is a bug then, it should short circuit so it doesn't become a problem
+      # on GitHub hosted runners." Confirmed in their source (src/index.ts): cache-installation
+      # calls @actions/cache's restoreCache/saveCache directly on the Unity Hub install path with no
+      # runner-type check at all - there is no self-hosted-only code path, so nothing here was ever
+      # going to work on windows-latest regardless of how cleanly the cache got seeded. Hand-rolling
+      # our own actions/cache step instead wouldn't route around this either - same restoreCache/
+      # saveCache calls on the same directory either way, so the same failure would recur.
       #
-      # modules: None stays regardless of this round's outcome - not implicated in any prior
-      # failure, and a real win on its own (less downloaded/installed, never needed for this job).
+      # Bottom line: this job runs on windows-latest (GitHub-hosted) deliberately (see runs-on
+      # comment above) - caching the Unity install is not supported here, full stop, not a config
+      # or timing problem. Don't re-attempt without first standing up a genuine self-hosted runner
+      # (its own real infra/security tradeoff for a public repo - not attempted, not planned).
+      # Full round-by-round writeup: docs/DESIGN.md Sec 12, docs/DESIGN_HISTORY.md's "round three".
+      #
+      # modules: None stays regardless - not implicated in any of this, and a real win on its own
+      # (less downloaded/installed, never needed since this job never builds a Player).
       - name: Install Unity
         uses: buildalon/unity-setup@v2
         with:
           unity-version: 6000.5.6f1
           modules: None
-          cache-installation: true
+          cache-installation: false
 
       # Live login each run, correctly bound to this runner's HardwareId - not a pre-generated
       # license file. A license file exported from any one machine (including a maintainer's own

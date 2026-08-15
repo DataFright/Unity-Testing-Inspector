@@ -416,22 +416,28 @@ License activation uses a live login each run (`UNITY_EMAIL`/`UNITY_PASSWORD` vi
 binds exported license files to the machine that generated them, so a file from a dev machine
 would never validate on a GitHub runner. Unity installs with `modules: None` (no IL2CPP — this job
 never builds a Player) via a fresh, uncached install each run — `cache-installation` is
-deliberately **off**: two separate attempts to re-enable it both produced a cache-restored install
-that failed to run Unity at all, in two different ways, from what should've been the same cached
-bytes, pointing at non-deterministic cache-restore corruption rather than anything about
-`modules: None` itself. **The original goal of this round — skip the ~13-minute install on repeat
-runs — is not met.** A fresh install (with or without the module) still takes roughly that long on
-a GitHub-hosted runner; the genuinely fast (~4 min) installs only happened on the two cache hits
-that then failed to actually run. `modules: None` stays anyway (smaller download/install
-regardless of timing, and never needed for this job), but CI is back to reliable, not fast — the
-real fix for install time would need the cache-restore corruption itself understood and fixed, not
-attempted yet. The test-run step also launches Unity directly with its own process-polling
-diagnostics rather than through `buildalon/unity-action`, kept deliberately (not just a leftover)
-since it already proved its worth catching a real failure fast. Confirmed green across two
-consecutive runs (14m33s and similar). Full setup/debugging history (ten live runs across two
-separate incidents, the cache-restore-corruption finding) is in `DESIGN_HISTORY.md` — re-enabling
-`cache-installation` isn't recommended without first understanding why the restore was
-non-deterministically broken.
+deliberately, permanently **off**: confirmed broken across three separate rounds (round one, twice
+in round two, once more in round three), and round three found the actual reason instead of just
+another failure. A clean, guaranteed-uncancelled reseed (old cache entries deleted by hand first)
+still produced a cache-hit run that crashed identically to a prior failure — "Unity.dll failed to
+load", `ERROR_MOD_NOT_FOUND`, no log ever created — ruling out a bad original seed as the cause.
+**The real reason, confirmed directly from `buildalon/unity-setup`'s own maintainer**
+([issue #55](https://github.com/buildalon/unity-setup/issues/55)): "cache-installation is only
+valid for self hosted runners" — their words, plus an admission it should short-circuit harmlessly
+on GitHub-hosted runners instead of failing, but currently doesn't. Confirmed in their source: no
+runner-type check exists anywhere in the cache-installation code path. This job runs on
+`windows-latest` (GitHub-hosted) deliberately (see the `runs-on` reasoning above), so this was
+never going to work here regardless of seeding cleanliness or timeout headroom — not a config
+problem, a documented incompatibility. Hand-rolling a custom `actions/cache` step instead of the
+built-in flag wouldn't help either — same underlying `restoreCache`/`saveCache` calls on the same
+directory either way. **The original goal — skip the ~13-minute install on repeat runs — is not
+met, and won't be without standing up a genuine self-hosted runner** (its own real infra/security
+tradeoff for a public repo, not attempted or currently planned). `modules: None` stays anyway
+(smaller download/install regardless of timing, and never needed for this job). The test-run step
+also launches Unity directly with its own process-polling diagnostics rather than through
+`buildalon/unity-action`, kept deliberately since it's what caught round two's and round three's
+real failures fast and cleanly both times. Full setup/debugging history (all three rounds, the
+maintainer-confirmed root cause) is in `DESIGN_HISTORY.md`.
 
 ### The Bring-Your-Own-Test Protocol
 
@@ -514,6 +520,14 @@ Full boundary-by-boundary writeup (what each guard replaced, and the bugs found 
 
 ## Change Log
 
+- 2026-08-15 17:50 — **CI cache saga, round three: found the real, maintainer-confirmed reason and
+  closed it out for good.** Deleted the two stale cache entries by hand, forced a guaranteed-clean
+  uncancelled reseed (run #21), then a cache-hit run (#22) still crashed identically to round two's
+  run #17 — ruling out a bad original seed. `buildalon/unity-setup`'s own maintainer confirmed on
+  their issue tracker that `cache-installation` only works on self-hosted runners, and admitted the
+  missing GitHub-hosted short-circuit is a bug on their end. `cache-installation` is now off
+  permanently (not just currently), with that reasoning in the workflow's own comments so it isn't
+  re-attempted blind. Full investigation: `DESIGN_HISTORY.md` §12.
 - 2026-08-15 00:31 — **Correction to the entry below: run #18's "Install Unity" was misreported as
   2m22s** (an intermediate tool-summarization error, not re-verified against the raw API response
   at the time) — it actually took **13m22s**, essentially the same as this project's historical

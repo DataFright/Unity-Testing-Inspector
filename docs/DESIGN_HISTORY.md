@@ -353,6 +353,69 @@ broken — that investigation, if it ever succeeds, is the actual remaining path
 ~2-minute target, not anything shipped so far. Not urgent: a reliably-working ~14.5-minute CI beats
 an unreliable one of any speed.
 
+### Round three, 2026-08-15: the overlooked variable, a clean test of it, and the real answer
+
+**The detail round two's own reasoning had already surfaced but not yet acted on:** round two's own
+writeup above named "run #15, the actual cache-seeding attempt, was itself cancelled mid-install at
+29m57s" as a real possibility for why what got cached might never have represented a complete
+install. `@actions/cache` never overwrites an existing key — a save silently no-ops if one's
+already there — so if that reasoning was right, every "re-enable caching" attempt since, including
+both round-two runs (#16, #17), had been restoring that same original, possibly-incomplete entry,
+never a genuinely clean one. That specific variable — a provably clean, uncancelled reseed under a
+non-stale key — had never actually been tested. Round three tested it properly.
+
+**Step one: confirmed the suspect entry directly, not just inferred it.** The GitHub Actions
+Caches UI showed exactly two entries: `unity-setup-win32-6000.5.6f1` (4.7 GB, cached and last used
+12 hours earlier — timeline matches round two exactly) and `unity-setup-win32-6000.5.6f1-windows-
+il2cpp` (4.7 GB, a week old — an orphaned leftover from round one, before `modules: None` existed
+and changed the cache key). Both deleted by hand before touching the workflow, so the next save
+couldn't silently skip onto either one.
+
+**Step two: re-enabled `cache-installation`, raised `timeout-minutes` 25→60 for headroom, pushed,
+and let it run to completion without touching it.** Run #21: fully green, and — critically — not
+cut off. `Install Unity` 14m59s (normal fresh-install cost, no cache existed yet), `Post Install
+Unity` (the actual cache-save) 6m34s, both clean. This is the first unambiguously complete,
+uncancelled seed this project has ever produced under this key.
+
+**Step three: one trivial follow-up push to trigger a second, cache-hit run.** Run #22: `Install
+Unity` 3m53s — a genuine cache hit, fast exactly like runs #16/#17 were. It then failed in 21
+seconds with **the exact same error as run #17, confirmed via the full log (not just timing) once
+GitHub sign-in was available to read it**: `"The code execution cannot proceed because Unity.dll
+failed to load. Make sure you meet Unity's system requirements."`, exit code `-2147024770`
+(`ERROR_MOD_NOT_FOUND`), `logExists=False logSizeBytes=0` — Unity never got far enough to create
+its own log. Identical failure, from a cache entry now definitively known to have been seeded
+cleanly. **This ruled out the poisoned-seed theory outright** — the corruption is reproducible from
+a good seed, so it isn't about seed quality at all.
+
+**Step four: found the actual reason, from the tool's own maintainer, not further guessing.**
+Re-read `buildalon/unity-setup`'s issue tracker with the "reproducible from a clean seed" finding
+in hand. [Issue #55](https://github.com/buildalon/unity-setup/issues/55) — a different user hitting
+a cache-triggered failure on a GitHub-hosted runner — has the maintainer (StephenHodgson) stating
+directly: **"cache-installation is only valid for self hosted runners."** Asked why it doesn't just
+no-op harmlessly on GitHub-hosted ones instead of failing, the maintainer's own reply: "Hmm maybe
+it is a bug then, it should short circuit so it doesn't become a problem on GitHub hosted runners."
+Confirmed against their actual source (`src/index.ts`, read directly): the `cache-installation`
+code path calls `@actions/cache`'s `restoreCache`/`saveCache` on the Unity Hub install path with no
+runner-type branch anywhere — there is no self-hosted-only code, so the missing short-circuit the
+maintainer describes is real, not fixed. This fully explains all three rounds' failures with one
+first-party-confirmed cause instead of a guessed mechanism (tar/symlink issues, Windows Defender
+interference, etc. — all plausible-sounding, none of it actually the reason).
+
+**Considered and rejected: hand-rolling a custom `actions/cache` step instead of the built-in
+flag.** The same source read that found the maintainer's explanation also closed this off — the
+built-in flag's cache-installation code path is *just* `@actions/cache`'s own `restoreCache`/
+`saveCache` calls on the same directory, nothing unity-setup-specific about the restore mechanics
+itself. Wrapping the same directory in our own `actions/cache` step would invoke the identical
+underlying calls and almost certainly hit the identical failure — there's no reason to expect a
+different outcome from routing through our own step instead of the action's.
+
+**Closed out: `cache-installation` set to `false` permanently** (not "currently off pending
+investigation" — the investigation is done), `timeout-minutes` back to 25, workflow comments
+rewritten to state the maintainer-confirmed reason directly so a future session doesn't re-attempt
+this blind. **The only real remaining path to the original ~2-minute goal is a genuine self-hosted
+runner** — a real infrastructure and public-repo-security tradeoff of its own, not attempted and
+not currently planned; flagged as a real option for whoever revisits this, not a task in progress.
+
 ## §13 history: already-fixed limitations
 
 - **CSV file path collisions on duplicate GameObject names.** Fixed 2026-08-07:
@@ -422,6 +485,11 @@ returns `null` (compiled-in defaults apply) with a warning, matching the method'
 
 ## Full Change Log (since day one)
 
+- 2026-08-15 17:50 — CI cache round three closed: found the real reason after a clean, uncancelled
+  reseed (run #21) still produced a cache-hit run (#22) that crashed identically to round two's
+  run #17. `buildalon/unity-setup`'s own maintainer confirmed `cache-installation` only works on
+  self-hosted runners and admitted the missing GitHub-hosted short-circuit is a bug on their end.
+  Set `cache-installation: false` permanently, not just currently. Full writeup above.
 - 2026-08-15 00:31 — Corrected a wrong figure from the entry below: run #18's "Install Unity" is
   13m22s, not 2m22s (a summarization error, never re-verified against the raw API at the time) —
   meaning this round's original "stop reinstalling Unity every push" goal was **not** actually
