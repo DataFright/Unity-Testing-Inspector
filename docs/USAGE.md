@@ -19,10 +19,10 @@ bare branch URL, and never a local `"file:"` path. The tag pin is what makes "wh
 on" a real, checkable answer instead of "whatever was on disk/`main` the day someone installed it."
 
 Via Unity Package Manager: Window > Package Manager > `+` > "Add package from git URL", then paste
-(swap in the current release tag — **`v0.2.0`** as of this writing):
+(swap in the current release tag — **`v0.2.1`** as of this writing):
 
 ```
-https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.0
+https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.1
 ```
 
 Or edit your project's `Packages/manifest.json` directly:
@@ -30,7 +30,7 @@ Or edit your project's `Packages/manifest.json` directly:
 ```json
 {
   "dependencies": {
-    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.0",
+    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.1",
     ...
   },
   "testables": [
@@ -39,7 +39,7 @@ Or edit your project's `Packages/manifest.json` directly:
 }
 ```
 
-**To update later:** bump the `#v0.2.0` to whatever the new release tag is and let Package Manager
+**To update later:** bump the `#v0.2.1` to whatever the new release tag is and let Package Manager
 re-resolve.
 
 **Actively developing UTI's own source, not just using it?** That's the one case where a local
@@ -260,6 +260,23 @@ the compiled-in defaults, ready to edit. Full field-by-field explanation is in
 
 ## Known constraints, not bugs
 
+- **Wiring Beans into your own test code?** A test assembly (e.g. a `*.PlayMode.asmdef` in your own
+  project) needs its own explicit `asmdef` reference to `UTI.Runtime` to compile against UTI's
+  types — this is standard Unity assembly behavior, not something UTI does specially, but it's easy
+  to miss since the only reference most people configure is the unrelated `testables` entry (which
+  is for running *UTI's own* tests, not for using UTI *from* your tests). Add `UTI.Runtime` to your
+  test assembly's References list the same way you'd add any other package assembly.
+- **Scripting Bean setup instead of adding components in the Editor?** `OnEnable()` — which is what
+  actually starts tracking/opens outputs — doesn't fire outside Play Mode unless a script has
+  `[ExecuteAlways]`, which UTI's components deliberately don't use. So a script that does
+  `gameObject.AddComponent<BeanTracker>()` etc. *before* pressing Play won't see anything actually
+  start until Play Mode itself begins — any field values you set beforehand (like `OutputTargets`)
+  are still respected once it does, but calling public methods like `Open()`/`StartTracking()`
+  yourself in that Edit-Mode window works too, just be aware that state gets reset and `OnEnable()`
+  fires fresh the moment Play Mode actually starts (same domain-reload behavior as any other script
+  state that isn't serialized). If you're scripting Bean setup as part of something that runs *at
+  runtime* (already in Play Mode), none of this applies — `OnEnable()` fires synchronously and
+  immediately, same as any other runtime `AddComponent()` call.
 - `BeanMouseTracker` needs the legacy Input Manager enabled (see §7).
 - `BeanSnapshotExporter`'s output resolution is deliberately low (640×360 default) — it's a fast
   sanity check, not a polished screenshot.
@@ -280,6 +297,9 @@ the compiled-in defaults, ready to edit. Full field-by-field explanation is in
 
 ## Change Log
 
+- 2026-08-22 — Fixed BUG-08 and BUG-10 (`TESTS/BugTracker.md`): added "Known constraints" callouts
+  for the test-assembly `asmdef` reference gap and Edit-Mode-vs-Play-Mode component-activation
+  timing, both previously undocumented gaps that had actually tripped up consuming teams.
 - 2026-08-08 — Documented the new JSON Lines output (`BeanLogger.Output Targets` gained `Json`
   alongside `Console`/`Csv`) and `BeanConfig`'s new `DefaultOutputTargets` key (§4, §8, §9).
 - 2026-08-08 — Documented a real bug and its fix: `BeanSnapshotExporter` frames/draws from the live

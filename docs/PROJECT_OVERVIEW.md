@@ -66,18 +66,32 @@ default filenames, a deliberate object-pooling answer (`BeanLogger.AppendAcrossR
 `EveryFixedUpdate` test coverage, full `CustomCapture`/`extras` test coverage, JSON Lines export,
 multi-angle snapshots, and `BeanConfig` covering snapshot-quality settings. Don't re-propose these.
 
-**Still open:**
+**Promoted — near-term priority (2026-08-22, direct user request):** these four move ahead of the
+rest of the Roadmap. One of them was suspected to already be covered by shipped features — checked
+against the actual current source (not memory/docs) before promoting, since a wrong assumption here
+would mean building something that already exists, or worse, skipping something that doesn't.
 
-- Configurable capture fields beyond transform (velocity, custom component values via
-  delegate/callback).
-- Categorical/string-valued extras (or a documented convention for encoding state like an AI's
-  current behavior — patrol/chase/attack — as a float), since `extras` today is numeric-only.
-- Replay: play back a recorded run visually, not just as a static path.
-- Optional validator/assert layer, opt-in, once the core kit has legs.
-- A runtime (non-Editor-only) trail option — e.g. `LineRenderer`-drawn — so a path is visible in
-  the actual Game view/builds, not just the Scene view via gizmos. Could also let a project's own
-  in-game map/minimap read from `BeanTracker.Samples`/`OnSample` directly, without UTI needing to
-  know that system exists (keeps the "no required dependencies" promise intact).
+- **A closer, "chase-cam" snapshot angle, distinct from `Above`/`Side`/`Behind`.** Those three are
+  all designed to fit the *whole recorded path* with margin — useful for "show me the route," less
+  useful for "show me this character and roughly where they're facing/heading" at a glance. Idea: a
+  closer, elevated-behind-and-angled-down shot — like a third-person chase/follow camera — framed on
+  the tracked object itself (near its final or a representative position) rather than stretched to
+  cover the entire path's bounding box. **Confirmed NOT already achievable via existing config**, via
+  full read of `Runtime/BeanSnapshotExporter.cs` (2026-08-22): `ComputeAboveFraming`/
+  `ComputeSideFraming`/`ComputeBehindFraming` all compute `position = bounds.center + offsetDirection
+  * distance`, where `bounds` is the whole path's bounding box and `distance` scales off
+  `bounds.extents.magnitude` — none of the three targets the object's own current/final position.
+  `minFramingRadius` only sets a floor on that distance for near-stationary paths; it doesn't change
+  the framing *target*. Would likely be a new `BeanSnapshotAngle` value (naming TBD). Not designed,
+  not started.
+- **Optional validator/assert layer, opt-in.** Concrete framing from a 2026-08-22 user idea: a
+  simple config-based condition — e.g. "Bean X should be at position Y by time T" — checked against
+  the already-captured log after a run, pass/fail. Would make UTI read more like a genuine framework
+  without forcing it: still opt-in, still built on the existing capture/log pipeline rather than a
+  new required step, so it doesn't contradict the "empowerment, not solutions" philosophy above as
+  long as it stays that way. Worth a real design pass before any code — where the assertion config
+  lives, what the pass/fail output actually looks like (console line? separate report file?), and
+  how it interacts with `BeanConfig`.
 - **Input tracking beyond mouse position** — `BeanMouseTracker` only captures where the cursor *is*,
   not raw input events. A `Bean`-style way to log keyboard key down/up, mouse click down/up, and
   similar discrete input events would round this out. Concrete motivating case: a Unity Test
@@ -89,26 +103,41 @@ multi-angle snapshots, and `BeanConfig` covering snapshot-quality settings. Don'
   fired-but-failed downstream. Same legacy-Input-Manager-vs-Input-System dependency question
   `BeanMouseTracker` already had to answer (see `DESIGN.md` §8.6) would need revisiting for
   discrete events specifically. Not started.
-- **A more "dynamic"/cinematic snapshot angle, distinct from `Above`/`Side`/`Behind`.** Those three
-  are all designed to fit the *whole recorded path* with margin — useful for "show me the route,"
-  less useful for "show me this character and roughly where they're facing/heading" at a glance.
-  Idea: a closer, elevated-behind-and-angled-down shot — like a third-person chase/follow camera —
-  framed on the tracked object itself (near its final or a representative position) rather than
-  stretched to cover the entire path's bounding box. Would likely be a new `BeanSnapshotAngle`
-  value (naming TBD). Not designed or started — explicitly not meant to be built yet.
 - **Safer guidance (or a code-level accommodation) for adding Beans to DOTS/Netcode-for-Entities
-  subscene-baked "ghost" prefabs.** Found in `bitshot` (a Bring-Your-Own-Test round): adding
+  subscene-baked "ghost" prefabs — raised in priority as real online-game integration coverage, not
+  just a niche pipeline quirk.** Found in `bitshot` (a Bring-Your-Own-Test round): adding
   `BeanTracker`/`BeanVisualizer` directly to a networked ghost prefab *asset* left the real gameplay
   components on that same prefab never activating — a subscene re-bake the edit didn't trigger, a
-  Netcode-for-Entities/DOTS pipeline detail specific to how that project bakes prefabs, not
-  anything UTI's own code does. **Confirmed not a UTI defect** — the immediate fix needs zero code
-  changes and already works: add Beans at runtime to an already-spawned instance instead of editing
-  the shared prefab asset. Two real follow-ups, neither started: (1) document this pattern
-  explicitly for anyone on an ECS/DOTS/networked-prefab pipeline; (2) genuinely open whether a
-  low-effort code-level accommodation is worth adding. Scope check: this is specifically a
-  DOTS/Netcode-for-Entities subscene-baking quirk, not "UTI doesn't support multiplayer" broadly —
-  a GameObject-based netcode stack (Netcode for GameObjects, Mirror, Photon) wouldn't hit this
-  failure mode at all. Full incident writeup: `TESTS/TestTracker_HISTORY.md`.
+  Netcode-for-Entities/DOTS pipeline detail specific to how that project bakes prefabs, not anything
+  UTI's own code does. **Confirmed not a UTI defect** — the immediate fix needs zero code changes and
+  already works: add Beans at runtime to an already-spawned instance instead of editing the shared
+  prefab asset. Two real follow-ups: (1) document this pattern explicitly for anyone on an
+  ECS/DOTS/networked-prefab pipeline; (2) genuinely open whether a low-effort code-level
+  accommodation is worth adding — worth a proper look now given real interest in verifying UTI
+  against actual online/multiplayer games, not just single-player genres. Scope check: this is
+  specifically a DOTS/Netcode-for-Entities subscene-baking quirk, not "UTI doesn't support
+  multiplayer" broadly — a GameObject-based netcode stack (Netcode for GameObjects, Mirror, Photon)
+  wouldn't hit this failure mode at all. Full incident writeup: `TESTS/TestTracker_HISTORY.md`.
+
+**Still open, no near-term priority:**
+
+- Configurable capture fields beyond transform (velocity, custom component values via
+  delegate/callback).
+- Categorical/string-valued extras (or a documented convention for encoding state like an AI's
+  current behavior — patrol/chase/attack — as a float), since `extras` today is numeric-only.
+- Replay: play back a recorded run visually, not just as a static path.
+- **A runtime (non-Editor-only) trail option** — e.g. `LineRenderer`-drawn — so a path is visible in
+  the actual Game view/builds, not just the Scene view via gizmos. **Confirmed NOT already covered
+  by `BeanSnapshotExporter`'s PNGs**, via full read of `Runtime/BeanVisualizer.cs` (2026-08-22): its
+  only draw calls are `Gizmos.DrawLine`/`Gizmos.DrawSphere` inside `OnDrawGizmos()`/
+  `OnDrawGizmosSelected()` — no `LineRenderer`, no other runtime-visible rendering path anywhere in
+  the file. Gizmos are structurally Scene-view-only (never appear in the Game view or in a build),
+  and `BeanSnapshotExporter` is a static, after-the-fact PNG, not a live trail — neither one is what
+  this item describes. Could also let a project's own in-game map/minimap read from
+  `BeanTracker.Samples`/`OnSample` directly, without UTI needing to know that system exists (keeps
+  the "no required dependencies" promise intact). **De-prioritized back off near-term 2026-08-22**,
+  same day it was promoted — direct user call, not a re-evaluation of its merit. Not designed, not
+  started.
 
 **Broader validation, partially done:** many-simultaneous-tracked-objects and a genre check that's
 actually projectile/AI-heavy rather than flight/platformer/2D-generic. **Partial:**
@@ -116,11 +145,37 @@ independent-buffers is EditMode-tested (several `BeanTracker`s driven at once, n
 the gizmo-draw-cost-at-realistic-counts half (a wave of enemies, a screen full of bullets) is still
 a live Play Mode check.
 
+## Testing coverage — where a real project would help
+
+Per the Bring-Your-Own-Test Protocol (`DESIGN.md` §12), UTI is verified against real, already-working
+projects — never a scene built just for UTI's own benefit. The genre/scenario gaps below are real,
+open validation needs; if you're building something in your own time that happens to fit one, that's
+genuinely useful test coverage, not a detour. This is exactly what the Protocol asks for: a real
+project someone was already building for its own sake, not a demo scene built to order.
+
+- **Vehicle/car handling** — confirming `BeanTracker`/`BeanVisualizer` hold up against a real
+  physics-driven car controller (T08).
+- **NPC/AI-nav** — a patrol/chase/attack-style AI, ideally one that would exercise the
+  categorical-state question `extras`' numeric-only limitation already flags.
+- **Projectile-heavy** — a shooter/bullet-hell-style game, for the still-partial
+  many-simultaneous-tracked-objects validation (gizmo draw cost with a screen full of bullets).
+- **A genuine online/multiplayer game using Netcode-for-Entities (DOTS), with subscene-baked "ghost"
+  prefabs** — directly needed for the newly-promoted DOTS/Netcode Roadmap item above. The `bitshot`
+  finding that motivated it was a one-off Bring-Your-Own-Test round, not an ongoing test bed; a real
+  project on this stack would let that item actually move past "documented workaround" into
+  confirmed, regularly-verified behavior.
+
 ## Dream To-Do
 
 Bigger, further-out ideas — not MVP, not scoped, not committed to. These are concepts worth
 remembering, not a plan. Nothing here should be started without a real design pass first.
 
+- **Load/performance testing — does running UTI meaningfully slow a project down for the dev using
+  it?** Direct user idea, 2026-08-22. Broader than the existing gizmo-draw-cost-at-scale check above
+  (which is narrowly about `BeanVisualizer`'s Scene-view line drawing) — this is about UTI's overall
+  overhead (capture interval cost, buffer memory, multiple simultaneous outputs) in a real project,
+  not just one component's worst case. Not scoped: would need a real project with a meaningful
+  object count to test against, same Bring-Your-Own-Test constraint as everything else here.
 - **A 3D-explorable scene artifact, not just a fixed-angle snapshot.** Instead of (or alongside)
   `BeanSnapshotExporter`'s flat PNG, export something a dev can actually rotate/pan/zoom through
   after the fact. Would completely solve the "one angle doesn't show everything" problem multi-angle
@@ -162,6 +217,23 @@ curious.)
 
 ## Change Log
 
+- 2026-08-22 10:51 — **Version bump: 0.2.0 → 0.2.1**, shipping BUG-06's fix
+  (`BeanLogger.OutputTargets` now re-opens on an actual change instead of silently no-op'ing).
+  Every install example across `README.md`/`docs/USAGE.md`/`TESTS/TestTracker.md` updated to the
+  new tag.
+- 2026-08-22 10:33 — Runtime trail de-prioritized back off the near-term-priority tier (moved back
+  to general Roadmap), per direct user call the same day it was promoted. The other four promoted
+  items are unaffected.
+- 2026-08-22 10:20 — **Five Roadmap items promoted to near-term priority**, per direct user
+  request: runtime trail, chase-cam snapshot angle, the assert layer, input tracking beyond mouse,
+  and DOTS/Netcode ghost-prefab guidance (raised further as real online-game coverage, not just a
+  niche quirk). Two of the five were suspected already-covered by shipped features — checked against
+  the actual current source first and confirmed genuinely unbuilt before promoting (see the Roadmap
+  section for the exact code citations). Added a "Testing coverage" section inviting real projects
+  in the genres/scenarios still needed, and a Dream To-Do entry for general load/performance testing.
+- 2026-08-22 09:08 — Refined the existing "optional validator/assert layer" Roadmap item with a
+  concrete framing from a direct user idea: a simple config-based position/time condition, checked
+  against the captured log after a run. Still Roadmap "Still open," not started.
 - 2026-08-21 20:35 — **BUG-05 closed** (`BeanMouseTracker` throwing on New-Input-System-only
   projects, shipped fixed in `v0.2.0`) — both branches now verified live, the second by the
   `little wings` team directly after migrating to the tag-pinned install. Added a Dream To-Do entry

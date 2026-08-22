@@ -87,6 +87,14 @@ tick,timestamp,x,y,z,qx,qy,qz,qw,extras
   logic is broken; this pattern has already found a real off-by-a-fraction trigger-distance bug in
   practice (see `TESTS/TestTracker.md`'s `project 2` closing report).
 
+**A file you check while the Bean is still actively running may look empty or incomplete — that's
+expected, not a bug.** CSV/JSON Lines output is buffered and flushed every 32 rows or on `Close()`
+(stopping tracking, disabling the GameObject, or exiting Play Mode), not after every single write —
+flushing every row would tank performance at high capture rates. If you're reading a file mid-run
+(especially in the first few samples) and it looks 0 bytes or cut off, that's the buffer not having
+flushed yet, not lost data. Wait for `Close()` to happen (or force one) before treating a short file
+as a real problem.
+
 ## JSON Lines output
 
 One JSON object per line (a `.jsonl` file, not a single top-level JSON array), from

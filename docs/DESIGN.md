@@ -15,9 +15,10 @@ what's actually *confirmed*, not assumed, per project. **Update a row whenever a
 confirms (not guesses) a project's setting** — reading `ProjectSettings/ProjectSettings.asset`
 directly, as opposed to inferring from docs or a prior session's notes.
 
-**UTI's own version:** `package.json`'s `version` field is the source of truth — currently **0.2.0**
-(bumped 2026-08-21 from a since-inception-unbumped 0.1.0, once real semver tracking started
-mattering). **Policy as of 2026-08-21: every consuming/test project installs from the GitHub URL,
+**UTI's own version:** `package.json`'s `version` field is the source of truth — currently **0.2.1**
+(0.1.0 → 0.2.0 on 2026-08-21 once real semver tracking started mattering; 0.2.0 → 0.2.1 on
+2026-08-22 for BUG-06's fix). **Policy as of 2026-08-21: every consuming/test project installs from
+the GitHub URL,
 pinned to a specific release tag — never via a local `"file:"` path.** A tag pin is what makes the
 "UTI Version" column below a real, checkable answer instead of "whatever's on disk right now"; a
 `file:` reference can't drift by definition, which sounds safe but also means there's nothing to
@@ -27,7 +28,7 @@ install/update.
 
 | Project | Unity Version | Active Input Handling | UTI Install Method | UTI Version | Last Directly Confirmed |
 |---|---|---|---|---|---|
-| `little wings` | 6000.5.6f1 | **New Input System only** (`activeInputHandler: 1`) — briefly flipped to "Both" for BUG-05's legacy-branch check, confirmed reverted back to `1` on disk afterward | **Migrated.** Tag-pinned GitHub URL (`...git#v0.2.0`) — no more `file:` | **`v0.2.0`**, self-reported by their own `manage_packages` job result (`result_version: "0.2.0"`), not just assumed from the tag name | 2026-08-21, by the `little wings` team directly (full reinstall + BUG-05 verification report) |
+| `little wings` | 6000.5.6f1 | **New Input System only** (`activeInputHandler: 1`) — briefly flipped to "Both" for BUG-05's legacy-branch check, confirmed reverted back to `1` on disk afterward | **Migrated.** Tag-pinned GitHub URL — no more `file:` | **`v0.2.0` as of 2026-08-21** (self-reported by their own `manage_packages` job result, not assumed from the tag name) — **stale as of 2026-08-22, `v0.2.1` now available with BUG-06's fix; update requested, not yet reconfirmed** | 2026-08-21, by the `little wings` team directly (full reinstall + BUG-05 verification report) |
 | `project 2` | 6000.5.6f1 (assumed — original baseline, not reverified) | Unknown — never directly checked | `file:` local package — **needs migration** to a tag-pinned GitHub URL install per the new policy | Untrackable while on `file:` (always reflects current source) | Not reconfirmed since original baseline |
 | `2d project 3` | 6000.5.6f1 (assumed — original baseline, not reverified) | Unknown — never directly checked | Assumed `file:` local package, unconfirmed — **needs migration** once confirmed | Untrackable while on `file:` | Not reconfirmed since original baseline |
 
@@ -493,8 +494,20 @@ Concretely:
    *can* actually drive Play Mode), not a reason to reimplement the test.
 5. **Report back what UTI actually produced** — the CSV, the console log, the PNG, the live
    Scene-view line.
+6. **Interpretation and all UTI-side documentation happen entirely on our side, never theirs.** A
+   team's involvement stops at step 5 — they run exactly what's asked and hand back raw results,
+   nothing more. Never ask a team to write, edit, or comment on UTI's own docs or code, never ask
+   them to help pick a fix or documentation approach, and never reference another consuming project
+   when scoping a request to one team — they have no access to or knowledge of anything outside
+   their own project. Each side stays in its own lane: they're the expert on their project, we're
+   the expert on UTI.
 
-**Where this came from:** a real round hit exactly the failure mode step 4 warns against — an
+**Where this came from (step 6):** a request drafted for `little wings` asked them to help choose
+between two fix/documentation options for a bug and referenced UTI's own doc structure directly —
+corrected immediately, 2026-08-22. Full reasoning: `CLAUDE.md`'s "Working with consuming teams"
+note.
+
+**Where this came from (steps 1–5):** a real round hit exactly the failure mode step 4 warns against — an
 agent's tooling couldn't drive a project's real PlayMode test through Test Runner (Play Mode entry
 is blocked as unsupported "user interaction" in that kind of MCP connection), so it started
 rewriting the test's movement logic into a temporary harness script instead, which immediately
@@ -548,6 +561,12 @@ Full boundary-by-boundary writeup (what each guard replaced, and the bugs found 
 
 ## Change Log
 
+- 2026-08-22 10:51 — Version bumped 0.2.0 → 0.2.1 for BUG-06's fix. Target Environment table's
+  `little wings` row flagged stale (confirmed at `v0.2.0`, update requested but not yet reconfirmed).
+- 2026-08-22 08:31 — **Added step 6 to the Bring-Your-Own-Test Protocol: a team's involvement ends
+  at reporting raw results — all interpretation and UTI-side documentation happens on our side.**
+  Corrected after a draft request for `little wings` asked them to help pick a fix/documentation
+  approach and referenced UTI's own docs directly. Matching standing rule added to `CLAUDE.md`.
 - 2026-08-21 20:36 — `little wings`' Target Environment row updated to reflect their own confirmed
   migration off `file:` onto the tag-pinned GitHub install (`v0.2.0`, self-reported by their
   `manage_packages` job result, not assumed from the tag name) — first project to actually complete
