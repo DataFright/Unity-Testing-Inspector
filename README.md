@@ -8,7 +8,10 @@ a car, an NPC, an AI ally, a projectile, a plane, a physics prop. No test framew
 assertions to write. Just attach it, hit Play, and look at the trail.
 
 Free and open source (MIT — see [LICENSE](./LICENSE)). Built to eventually land on the Unity Asset
-Store; usable as a local/git package today.
+Store; usable as a Unity package today, installed straight from GitHub (see Install below).
+
+**Current release: `v0.2.0`** — see [docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md)'s Change
+Log for what's in it and everything before it.
 
 ## The problem
 

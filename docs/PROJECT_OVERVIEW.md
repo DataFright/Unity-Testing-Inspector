@@ -140,6 +140,16 @@ remembering, not a plan. Nothing here should be started without a real design pa
   coverage is instead exercised opportunistically via whatever already exists in a real consuming
   project (see `TESTS/TestTracker.md` T08). If ever revisited, it would need to piggyback on a
   project that already exists rather than being built from scratch.
+- **An editor-only test utility for toggling Active Input Handling programmatically.** Surfaced by
+  the `little wings` team while verifying BUG-05's legacy-input branch (`TESTS/TestTracker.md` T21):
+  no public Unity scripting API exists for this setting (`PlayerSettings.GetSerializedObject()` is
+  `internal`), so they reached it via reflection into that internal method, then the public
+  `SerializedObject`/`SerializedProperty` API from there — worked reliably, but is uglier than
+  wanted for something that might need to happen more than once. Would only be worth building if
+  `BeanMouseTracker`'s legacy-input path ends up needing *routine* regression coverage rather than
+  the one-off manual check it's had so far — not true today. If that need materializes, wrap the
+  same reflection trick into a small internal editor utility instead of reflecting into it ad hoc
+  each time.
 
 ## Naming
 
@@ -152,6 +162,11 @@ curious.)
 
 ## Change Log
 
+- 2026-08-21 20:35 — **BUG-05 closed** (`BeanMouseTracker` throwing on New-Input-System-only
+  projects, shipped fixed in `v0.2.0`) — both branches now verified live, the second by the
+  `little wings` team directly after migrating to the tag-pinned install. Added a Dream To-Do entry
+  for a possible future editor-only Active-Input-Handling test utility, surfaced by their report.
+  Full detail: `TESTS/BugTracker.md` BUG-05.
 - 2026-08-21 19:32 — **First real version bump: 0.1.0 → 0.2.0** (had been unbumped since the
   initial commit despite everything shipped since). Paired with a policy change, per direct user
   instruction: every consuming/test project now installs from the GitHub URL pinned to a release

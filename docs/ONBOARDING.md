@@ -66,9 +66,11 @@ UTI/                            (this repo — package source, not a Unity proje
                                  own <project root>/UTI/ folder by BeanConfig's Editor menu item.
 ```
 
-UTI is **not** a standalone Unity project — it has no `Assets/`/`ProjectSettings/` of its own.
-It's referenced as a local `"file:"` package (or a git URL) from real, separate Unity projects.
-See "How UTI is tested" below for where those live.
+UTI is **not** a standalone Unity project — it has no `Assets/`/`ProjectSettings/` of its own. It's
+referenced as a package from real, separate Unity projects — a tag-pinned GitHub URL for every
+consuming/test project (the standing policy as of 2026-08-21; see `CLAUDE.md`'s "Public repo" note),
+`"file:"` only for someone actively developing UTI's own source. See "How UTI is tested" below for
+where those consuming projects live.
 
 ## The six components (`Runtime/`)
 
