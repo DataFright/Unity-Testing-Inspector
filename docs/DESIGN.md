@@ -9,9 +9,33 @@ true now.
 
 ## Target Environment
 
-Unity **6000.5.6f1** (Unity 6 LTS) — the actual installed Editor version across all three test
-projects (`little wings`, `project 2`, `2d project 3`). This is the real baseline for API
-compatibility decisions.
+Unity **6000.5.6f1** (Unity 6 LTS) is the original baseline this project was designed against. Per-
+project reality drifts over time and isn't always reverified when it does — the table below tracks
+what's actually *confirmed*, not assumed, per project. **Update a row whenever a session directly
+confirms (not guesses) a project's setting** — reading `ProjectSettings/ProjectSettings.asset`
+directly, as opposed to inferring from docs or a prior session's notes.
+
+**UTI's own version:** `package.json`'s `version` field is the source of truth — currently **0.2.0**
+(bumped 2026-08-21 from a since-inception-unbumped 0.1.0, once real semver tracking started
+mattering). **Policy as of 2026-08-21: every consuming/test project installs from the GitHub URL,
+pinned to a specific release tag — never via a local `"file:"` path.** A tag pin is what makes the
+"UTI Version" column below a real, checkable answer instead of "whatever's on disk right now"; a
+`file:` reference can't drift by definition, which sounds safe but also means there's nothing to
+compare against latest, and no way to tell a project's actually behind. See `CLAUDE.md`'s "Public
+repo" note for the full reasoning and `README.md`'s Install section for how a project should
+install/update.
+
+| Project | Unity Version | Active Input Handling | UTI Install Method | UTI Version | Last Directly Confirmed |
+|---|---|---|---|---|---|
+| `little wings` | 6000.5.6f1 | **New Input System only** (`activeInputHandler: 1`) | `file:` local package — **needs migration** to a tag-pinned GitHub URL install per the new policy | Untrackable while on `file:` (always reflects current source) | 2026-08-21, via Unity MCP script execution reading `ProjectSettings.asset` directly |
+| `project 2` | 6000.5.6f1 (assumed — original baseline, not reverified) | Unknown — never directly checked | `file:` local package — **needs migration**, same as above | Untrackable while on `file:` | Not reconfirmed since original baseline |
+| `2d project 3` | 6000.5.6f1 (assumed — original baseline, not reverified) | Unknown — never directly checked | Assumed `file:` local package, unconfirmed — **needs migration** once confirmed | Untrackable while on `file:` | Not reconfirmed since original baseline |
+
+Active Input Handling matters concretely for `BeanMouseTracker` — see `BUG-05` in
+`TESTS/BugTracker.md` for a case where not knowing this per-project caused real friction (a fix
+could only be verified against whichever project happened to be in the right mode, and that wasn't
+known in advance). Once a project migrates off `file:`, fill in its actual pinned tag in the "UTI
+Version" column instead of "Untrackable."
 
 ## 1. Data Flow
 
@@ -520,6 +544,17 @@ Full boundary-by-boundary writeup (what each guard replaced, and the bugs found 
 
 ## Change Log
 
+- 2026-08-21 19:32 — **Version policy set, per direct user instruction: no consuming/test project
+  installs via `file:` anymore — GitHub URL pinned to a tag, always.** `package.json` bumped
+  0.1.0 → 0.2.0 (first real bump since inception). Target Environment table gained a "UTI Version"
+  column and each project's row now flags it as needing migration off `file:`. Full reasoning:
+  `CLAUDE.md`'s "Public repo" note.
+- 2026-08-21 19:23 — **Target Environment turned into a real per-project tracking table**, per
+  direct user request after not knowing `little wings`' Active Input Handling setting cost real
+  time mid-session (BUG-05 verification). Now tracks Unity version, Active Input Handling, install
+  method, and last-directly-confirmed date per project instead of one assumed shared baseline;
+  `project 2`/`2d project 3` rows honestly marked unconfirmed rather than copied from `little
+  wings`' fresh reading.
 - 2026-08-15 17:50 — **CI cache saga, round three: found the real, maintainer-confirmed reason and
   closed it out for good.** Deleted the two stale cache entries by hand, forced a guaranteed-clean
   uncancelled reseed (run #21), then a cache-hit run (#22) still crashed identically to round two's

@@ -40,11 +40,16 @@ visible so you can judge it yourself, faster than reading logs or guessing from 
 
 ## Install
 
-**Recommended — directly from GitHub**, via Unity Package Manager: Window > Package Manager >
-`+` > "Add package from git URL", then paste:
+**Always install from the GitHub URL, pinned to a release tag** — never a bare branch URL and never
+a local `"file:"` path. A tag pin is what makes "what version am I running" a real, checkable
+question instead of "whatever happened to be on disk/`main` at install time" — see
+[docs/DESIGN.md](./docs/DESIGN.md)'s Target Environment table for why this matters in practice.
+
+Via Unity Package Manager: Window > Package Manager > `+` > "Add package from git URL", then paste
+(swap in whatever the current release tag is — **`v0.2.0`** as of this writing):
 
 ```
-https://github.com/DataFright/Unity-Testing-Inspector.git
+https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.0
 ```
 
 Or edit your project's `Packages/manifest.json` by hand:
@@ -52,7 +57,7 @@ Or edit your project's `Packages/manifest.json` by hand:
 ```json
 {
   "dependencies": {
-    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git",
+    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.0",
     ...
   },
   "testables": [
@@ -68,9 +73,14 @@ Once it resolves, run **UTI > Setup Project (Config + Docs)** from the Editor me
 bootstraps a `BeanConfig.txt` and copies the full end-user docs into your own project's `UTI/`
 folder, right next to the CSVs/PNGs it'll generate.
 
-**Contributing, or want a local/pinned copy instead of tracking a branch?** Clone this repo
-somewhere on disk and reference that folder with a `"file:"` URL instead — local edits then show up
-in your test project immediately, no commit/push round-trip needed:
+**To update**, bump the `#v0.2.0` in your `manifest.json` to whatever the new release tag is and let
+Package Manager re-resolve — that one-line diff is the whole update.
+
+**Actively developing UTI's own source (not just using it)?** Clone this repo somewhere on disk and
+reference that folder with a `"file:"` URL instead — local edits show up immediately, no
+commit/push/tag round-trip needed. This is for hacking on UTI itself; a project that's just
+*consuming* UTI should stay on a tag-pinned GitHub URL, not `file:`, so its installed version stays
+a real, checkable answer:
 
 ```json
 "com.uti.core": "file:C:/wherever/you/cloned/Unity-Testing-Inspector"

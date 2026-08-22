@@ -14,13 +14,15 @@ game's own preferred defaults in one place instead of configuring every Bean by 
 ## 1. Install it
 
 UTI isn't embedded in your game project — it lives in its own repo and your project references it
-as a package, either straight from GitHub or as a local clone.
+as a package. **Always install from the GitHub URL, pinned to a specific release tag** — never a
+bare branch URL, and never a local `"file:"` path. The tag pin is what makes "which version am I
+on" a real, checkable answer instead of "whatever was on disk/`main` the day someone installed it."
 
-**Recommended — install directly from GitHub** via Unity Package Manager: Window > Package Manager
-> `+` > "Add package from git URL", then paste:
+Via Unity Package Manager: Window > Package Manager > `+` > "Add package from git URL", then paste
+(swap in the current release tag — **`v0.2.0`** as of this writing):
 
 ```
-https://github.com/DataFright/Unity-Testing-Inspector.git
+https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.0
 ```
 
 Or edit your project's `Packages/manifest.json` directly:
@@ -28,7 +30,7 @@ Or edit your project's `Packages/manifest.json` directly:
 ```json
 {
   "dependencies": {
-    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git",
+    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.0",
     ...
   },
   "testables": [
@@ -37,10 +39,14 @@ Or edit your project's `Packages/manifest.json` directly:
 }
 ```
 
-**Contributing to UTI itself, or want a pinned local copy instead?** Clone the repo somewhere on
-disk and point at that folder with a `"file:"` URL instead — e.g.
-`"com.uti.core": "file:C:/wherever/you/cloned/Unity-Testing-Inspector"` — so local edits show up in
-your test project immediately without needing a commit/push round-trip.
+**To update later:** bump the `#v0.2.0` to whatever the new release tag is and let Package Manager
+re-resolve.
+
+**Actively developing UTI's own source, not just using it?** That's the one case where a local
+`"file:"` reference makes sense (clone the repo, point at that folder — local edits show up
+immediately, no commit/push/tag round-trip). If you're just consuming UTI in a game project, stay on
+a tag-pinned GitHub URL instead — `file:` always reflects whatever's currently on disk, which means
+there's no version to check it against.
 
 The `testables` entry isn't optional if you want UTI's own tests to show up in your Test Runner —
 without it, Unity silently reports 0 tests found even though the package compiled fine. Save,

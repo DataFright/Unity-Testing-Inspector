@@ -152,6 +152,12 @@ curious.)
 
 ## Change Log
 
+- 2026-08-21 19:32 — **First real version bump: 0.1.0 → 0.2.0** (had been unbumped since the
+  initial commit despite everything shipped since). Paired with a policy change, per direct user
+  instruction: every consuming/test project now installs from the GitHub URL pinned to a release
+  tag, never a local `"file:"` path — the tag pin is what makes "what version is this project
+  running" a real, checkable question. `README.md`/`docs/USAGE.md` updated to match; full reasoning
+  in `docs/DESIGN.md`'s Target Environment table and `CLAUDE.md`'s "Public repo" note.
 - 2026-08-11 09:41 — **Restructured for a full docs condense pass**: moved the "already shipped"
   Roadmap narrative (persisted-artifact decision, robustness fixes, the JSON export story) and the
   full historical Change Log to `PROJECT_OVERVIEW_HISTORY.md`, leaving this file as current
