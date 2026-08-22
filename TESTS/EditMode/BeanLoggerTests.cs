@@ -247,6 +247,71 @@ namespace UTI.Tests
         }
 
         [Test]
+        public void OutputTargets_ChangedAfterOpen_TakesEffectImmediately()
+        {
+            // BUG-06 (TESTS/BugTracker.md): a script that adds BeanLogger at runtime - where
+            // OnEnable()->Open() fires synchronously during AddComponent<T>() - and changes
+            // OutputTargets a moment later used to see zero effect from that change until a
+            // manual Close()+Open(), since Open() only ever built activeOutputs once. Reproduces
+            // that exact sequence: Open() while still Console-only, then add Csv afterward.
+            string path = Path.Combine(Path.GetTempPath(), $"bean_test_{System.Guid.NewGuid():N}.csv");
+
+            var go = new GameObject("BeanLoggerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            var logger = go.AddComponent<BeanLogger>();
+            logger.OutputTargets = BeanOutputTargets.Console;
+            logger.Open(); // simulates the synchronous OnEnable()->Open() a real runtime AddComponent<BeanLogger>() would trigger
+
+            logger.OutputTargets = BeanOutputTargets.Console | BeanOutputTargets.Csv; // changed after Open() already ran
+            logger.FilePath = path;
+
+            tracker.ClearSamples();
+            tracker.StartTracking();
+            tracker.SimulateFrame(1f / 60f);
+            logger.Close();
+
+            bool fileWasCreated = File.Exists(path);
+            string[] lines = fileWasCreated ? File.ReadAllLines(path) : null;
+            if (fileWasCreated)
+                File.Delete(path);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.IsTrue(fileWasCreated, "changing OutputTargets after Open() should take effect, not silently do nothing");
+            Assert.AreEqual(2, lines.Length, "expected the header plus the one sample captured after the OutputTargets change");
+        }
+
+        [Test]
+        public void OutputTargets_SetToSameValue_DoesNotReopen()
+        {
+            // The re-open-on-change fix above should be a no-op when the value doesn't actually
+            // change - otherwise something as harmless as re-assigning the same OutputTargets in
+            // a script would needlessly truncate an in-progress CSV back to just the header.
+            string path = Path.Combine(Path.GetTempPath(), $"bean_test_{System.Guid.NewGuid():N}.csv");
+
+            var go = new GameObject("BeanLoggerTestObject");
+            var tracker = go.AddComponent<BeanTracker>();
+            var logger = go.AddComponent<BeanLogger>();
+            logger.OutputTargets = BeanOutputTargets.Csv;
+            logger.FilePath = path;
+            logger.Open();
+
+            tracker.ClearSamples();
+            tracker.StartTracking();
+            tracker.SimulateFrame(1f / 60f);
+
+            logger.OutputTargets = BeanOutputTargets.Csv; // same value - should not reopen/truncate
+
+            tracker.SimulateFrame(1f / 60f);
+            logger.Close();
+
+            string[] lines = File.ReadAllLines(path);
+            File.Delete(path);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            Assert.AreEqual(3, lines.Length, "re-assigning the same OutputTargets value should not truncate rows already written");
+        }
+
+        [Test]
         public void CsvOutput_DefaultAppendFalse_TruncatesOnReopen()
         {
             // T14 (TESTS/TestTracker.md): the original, still-default behavior - re-opening the

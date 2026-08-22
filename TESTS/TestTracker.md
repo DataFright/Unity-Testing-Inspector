@@ -44,6 +44,7 @@ capability — see T05's row.
 | T28 | BeanSnapshotExporter | `CaptureSnapshot()` reads the live ring buffer, not the CSV — a long idle tail can silently evict the real path before a snapshot | Track real movement well past `MaxSamples`, then stay stationary for `MaxSamples`+ more, then capture | Buffer should still reflect the real path, or warn if it can't | project 2 | **Pass — found live, root-caused, fixed same day.** Reproduced directly: 200 real-movement samples + 3000 stationary samples dropped the buffer's Z-span to exactly 0. New `IsBufferAtCapacity()` warning added. Full detail: `TestTracker_HISTORY.md`, `DESIGN_HISTORY.md` §8.4. | 2026-08-08 |
 | T29 | BeanLogger | JSON Lines output, `BeanConfig.DefaultOutputTargets`, the `BeanFileOutputBase` refactor | Run the expanded `BeanLoggerTests` + `BeanConfigTests` | All pass | project 2 | **Pass — built and verified live**, both before and after the refactor (97/97 EditMode). | 2026-08-08 |
 | T30 | Package/Install, BeanVisualizer, BeanSnapshotExporter | First fully external install: a fourth test project installs from the public GitHub URL and attaches Beans to its own existing gameplay, to independently verify T05/`BeanSnapshotExporter` | See relay prompt in `TestTracker_HISTORY.md` | Package installs cleanly from the GitHub URL; independent report on gizmo visibility and snapshot output | first project | Planned — relay prompt sent, not yet run. **Possibly moot now that T05 resolved via a different path** (the user's own direct testing, 2026-08-09) — worth confirming next session whether it's still worth running. | 2026-08-09 |
+| T31 | BeanLogger | `OutputTargets` change after `Open()` takes effect immediately instead of silently no-op'ing (BUG-06's fix) | Run the new `BeanLoggerTests` cases: `OutputTargets_ChangedAfterOpen_TakesEffectImmediately`, `OutputTargets_SetToSameValue_DoesNotReopen` | Both pass | little wings | **Planned — written, not yet run.** No Unity MCP connection this session to execute EditMode tests live. Root cause and fix are confirmed correct via a real `little wings` repro (their "Run 3": zero CSV files across 40 real samples with a runtime-added `BeanLogger`) before the fix was written, not just from reading the code cold. See `BugTracker.md` BUG-06. | 2026-08-22 |
 
 ## Open items (not yet Pass)
 
@@ -56,13 +57,13 @@ capability — see T05's row.
 ## Manifest snippet for adding UTI to a new test project
 
 **Standing policy since 2026-08-21: tag-pinned GitHub URL, not `file:`** — see `DESIGN.md`'s Target
-Environment table for why. Swap in whatever the current release tag is (`v0.2.0` as of this
+Environment table for why. Swap in whatever the current release tag is (`v0.2.1` as of this
 writing):
 
 ```json
 {
   "dependencies": {
-    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.0",
+    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.1",
     ...
   },
   "testables": [
@@ -77,6 +78,9 @@ run `UTI.Tests.BeanBufferTests`. **T07** — confirm it resolved with no console
 
 ## Change Log
 
+- 2026-08-22 10:36 — Added T31 for BUG-06's fix (`BeanLogger.OutputTargets` now re-opens on an
+  actual change). Written, not yet run — no Unity MCP connection this session. See `BugTracker.md`
+  BUG-06 for the `little wings` repro that confirmed the root cause first.
 - 2026-08-21 20:25 — T21 CLOSED — both PlayMode branches now verified live. The `little wings`
   team confirmed the legacy/Both-mode branch directly (clean console + reflection-confirmed
   internal state, not just "nothing looked broken"), closing the gap this session's own testing

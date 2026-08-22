@@ -27,7 +27,32 @@ namespace UTI
         [SerializeField] private bool appendAcrossReuse;
 
         public BeanTracker Tracker { get => tracker; set => tracker = value; }
-        public BeanOutputTargets OutputTargets { get => outputTargets; set => outputTargets = value; }
+
+        // A plain field assignment here would silently do nothing once isOpen - Open() only ever
+        // builds activeOutputs once per activation (see Open()'s isOpen guard), so a script that
+        // adds BeanLogger at runtime and changes OutputTargets a moment later (after the
+        // synchronous OnEnable->Open() already ran with whatever the field's default/prior value
+        // was) would see zero effect until a manual Close()+Open() - confirmed live, BUG-06
+        // (TESTS/BugTracker.md). Re-opening on an actual change makes the setter behave the
+        // same regardless of whether it's touched via script or the Inspector.
+        public BeanOutputTargets OutputTargets
+        {
+            get => outputTargets;
+            set
+            {
+                if (outputTargets == value)
+                    return;
+
+                outputTargets = value;
+
+                if (isOpen)
+                {
+                    Close();
+                    Open();
+                }
+            }
+        }
+
         public string FilePath { get => filePath; set => filePath = value; }
         public bool AppendAcrossReuse { get => appendAcrossReuse; set => appendAcrossReuse = value; }
 
