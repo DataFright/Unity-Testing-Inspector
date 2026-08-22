@@ -34,7 +34,7 @@ capability — see T05's row.
 | T17 | BeanSnapshotExporter | Manual capture produces a usable PNG with tracked path + real scene geometry | Add `BeanSnapshotExporter`, track, capture, open the PNG in the project's own `UTI/BeanSnapshots/` | File exists, shows scene + path, correctly framed | little wings | **Pass.** Real capture confirmed on the filesystem; `LastLineWidth` confirmed the width-scaling fix is active. Surfaced T18. | 2026-08-07 |
 | T18 | BeanSnapshotExporter | Auto-frame camera shouldn't foreshorten a path parallel to the old fixed offset direction | Track a path close to the old fixed direction, capture, inspect | Renders with visible margin, not foreshortened | little wings | **Fixed, unit-tested.** Not yet re-verified live with a genuinely diagonal *moving* path. | 2026-08-07 |
 | T19 | BeanSnapshotExporter | `DimensionMode` override + broadside-framing pure logic (EditMode) | Run the updated `BeanSnapshotExporterTests` (20 tests) | All pass | little wings | Planned — tests written, not yet relayed for live confirmation. | 2026-08-07 |
-| T21 | BeanMouseTracker | Screen/world mouse-position resolution (EditMode) | Run `BeanMouseTrackerTests` (3 tests) | All pass | little wings | Planned — pure functions covered; live `Update()`-driven mouse-follow check in Play Mode not yet done. | 2026-08-07 |
+| T21 | BeanMouseTracker | Screen/world mouse-position resolution (EditMode) + live `Update()` behavior (PlayMode) | Run `BeanMouseTrackerTests` (3 EditMode tests) + `BeanMouseTrackerPlayModeTests` (`TESTS/PlayMode/`, covers BUG-05's fix: never-throws regardless of input mode, plus a mode-specific test gated by the same `ENABLE_LEGACY_INPUT_MANAGER` symbol the production code branches on) | All pass | little wings | **Partial — Pass (New-Input-System branch).** EditMode half Pass since 2026-08-07. PlayMode half run live 2026-08-21 via Unity MCP script execution (`TestRunnerApi`, real Play Mode entry) in `little wings` (`activeInputHandler: 1`) — zero errors, warning-count evidence matches both tests passing (full detail: `BugTracker.md` BUG-05). NUnit's own structured pass/fail didn't survive Play Mode's domain reload through this bridge, so this is console-evidence-confirmed, not a captured green checkmark. **Still open:** the legacy/Both-mode branch (`Update_WithLegacyInputAvailable_...`) has never compiled or run — no available project is set to that Active Input Handling mode. | 2026-08-07 (EditMode), 2026-08-20 (PlayMode written), 2026-08-21 (PlayMode run, partial) |
 | T22 | BeanConfig | `ParseLines`/`ApplyConfigDefaults` on `BeanConfig`/`BeanTracker`/`BeanSnapshotExporter` (EditMode) | Run `BeanConfigTests` + `BeanTrackerTests` + `BeanSnapshotExporterTests` | All pass | little wings, project 2 | **Pass.** EditMode logic, the `Reset()` hook, and the `UTI > Setup Project` menu item all confirmed live. | 2026-08-07 |
 | T23 | BeanSnapshotExporter | Auto-framing shouldn't produce an unhelpfully tight shot on a near-stationary path | Raise `MinFramingRadius`, re-run a near-stationary reproduction, capture | Meaningful scene context at a larger radius | project 2 | **Pass — verified live**, not just unit-tested. Same path at `MinFramingRadius=2` vs. `=9`, both PNGs viewed directly. | 2026-08-08 |
 | T24 | BeanSnapshotExporter | Multi-angle capture (`Auto`/`Above`/`Side`/`Behind`) pure logic (EditMode) | Run the updated `BeanSnapshotExporterTests` | All pass | little wings, project 2 | **Pass — built and verified live.** 4 distinct PNGs from one call, all viewed directly; `Auto` matched the pre-existing single-angle shot exactly. | 2026-08-08 |
@@ -73,6 +73,17 @@ run `UTI.Tests.BeanBufferTests`. **T07** — confirm it resolved with no console
 
 ## Change Log
 
+- 2026-08-21 11:51 — T21's PlayMode half run live in `little wings` via Unity MCP real script
+  execution (not manual testing) — zero errors, console evidence matches both tests passing.
+  Legacy/Both-input-mode branch still unexercised. Full detail: `BugTracker.md` BUG-05.
+- 2026-08-20 15:31 — Added `TESTS/PlayMode/` (new `UTI.PlayModeTests.asmdef` +
+  `BeanMouseTrackerPlayModeTests.cs`) covering BUG-05's `Update()` fix live: a never-throws check
+  plus a mode-specific assertion (`#if ENABLE_LEGACY_INPUT_MANAGER`) matching whichever branch the
+  running project actually compiles. Written, not yet run — no Unity Editor access this session.
+  T21 updated to track both halves.
+- 2026-08-20 14:54 — T21 note updated: BUG-05's fix touches the same `Update()` method and needs
+  the same still-pending live Play Mode check, so both should be verified in one pass. See
+  `BugTracker.md` BUG-05.
 - 2026-08-11 09:41 — **Restructured for a full docs condense pass**: shrunk every table cell to a
   concise status + pointer (T05's cell alone was previously ~2,000 words), moved the "T05
   Investigation Notes" section, the "T30 live findings log," completed relay prompts, and the full

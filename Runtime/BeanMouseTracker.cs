@@ -17,7 +17,10 @@ namespace UTI
     // Mouse.current, specifically to avoid adding a hard package dependency - keeps UTI's "no
     // required dependencies" promise intact even for projects that don't have Input System
     // installed. If a project's Active Input Handling (Project Settings > Player) is set to
-    // "Input System Package (New)" only, switch it to "Both" for this component to work.
+    // "Input System Package (New)" only, Input.mousePosition throws every frame (BUG-05) - guarded
+    // below via Unity's own ENABLE_LEGACY_INPUT_MANAGER compile symbol so that config degrades to a
+    // one-time warning instead of an exception storm. Switching Active Input Handling to "Both" is
+    // still the way to get this component actually reading the mouse.
     /// <summary>
     /// Attach alongside a BeanTracker to make it follow the mouse cursor instead of this
     /// GameObject's own gameplay movement - useful for debugging exact mouse input/aim behavior
@@ -34,9 +37,27 @@ namespace UTI
         public Camera WorldCamera { get => worldCamera; set => worldCamera = value; }
         public float WorldDistanceFromCamera { get => worldDistanceFromCamera; set => worldDistanceFromCamera = value; }
 
+        private bool warnedLegacyInputUnavailable;
+
         private void Update()
         {
+#if ENABLE_LEGACY_INPUT_MANAGER
             Vector2 mouseScreenPosition = Input.mousePosition;
+#else
+            if (!warnedLegacyInputUnavailable)
+            {
+                Debug.LogWarning(
+                    "BeanMouseTracker needs the legacy Input Manager, but this project's Active " +
+                    "Input Handling (Project Settings > Player) is set to \"Input System Package " +
+                    "(New)\" only. It will hold position instead of following the mouse until " +
+                    "that setting is switched to \"Both\". (See BeanMouseTracker's source comment " +
+                    "for why this doesn't just switch to the new Input System.)",
+                    this);
+                warnedLegacyInputUnavailable = true;
+            }
+
+            Vector2 mouseScreenPosition = Vector2.zero;
+#endif
 
             transform.position = trackingSpace == BeanMouseTrackingSpace.World
                 ? ResolveWorldPosition(mouseScreenPosition, worldCamera != null ? worldCamera : Camera.main, worldDistanceFromCamera)
