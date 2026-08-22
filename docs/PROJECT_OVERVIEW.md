@@ -58,6 +58,14 @@ UTI closes that gap by making behavior visible: attach a Bean, hit play, and see
 
 This list isn't exhaustive on purpose — anything with a Transform is a valid target for a Bean.
 
+**Real validation, not just theory:** `astro aces` used a `CustomCapture` adapter logging mouse
+delta/aim-error per physics tick to close a genuinely months-old, previously-unreproducible
+flight-aim bug (2026-08-22) — tick-by-tick CSV resolution pinpointed one corrupted reading on the
+exact same physics step every time, something no amount of screenshots or verbal bug reports had
+surfaced. Their own words: "decisively... the reason this bug is closed at all." Full report:
+`TESTS/BugTracker.md` BUG-12 and the Roadmap items above it note the real gaps their session also
+surfaced.
+
 ## Roadmap (rough, unordered)
 
 **Already shipped** (full build/verification story for each: `DESIGN.md` and
@@ -66,10 +74,10 @@ default filenames, a deliberate object-pooling answer (`BeanLogger.AppendAcrossR
 `EveryFixedUpdate` test coverage, full `CustomCapture`/`extras` test coverage, JSON Lines export,
 multi-angle snapshots, and `BeanConfig` covering snapshot-quality settings. Don't re-propose these.
 
-**Promoted — near-term priority (2026-08-22, direct user request):** these four move ahead of the
-rest of the Roadmap. One of them was suspected to already be covered by shipped features — checked
-against the actual current source (not memory/docs) before promoting, since a wrong assumption here
-would mean building something that already exists, or worse, skipping something that doesn't.
+**Promoted — near-term priority:** these five move ahead of the rest of the Roadmap. Four promoted
+2026-08-22 per direct user request (one was suspected to already be covered by shipped features —
+checked against the actual current source, not memory/docs, before promoting); the fifth
+(`BeanMouseTracker`'s Input System gap) added the same day after a second independent team hit it.
 
 - **A closer, "chase-cam" snapshot angle, distinct from `Above`/`Side`/`Behind`.** Those three are
   all designed to fit the *whole recorded path* with margin — useful for "show me the route," less
@@ -103,6 +111,18 @@ would mean building something that already exists, or worse, skipping something 
   fired-but-failed downstream. Same legacy-Input-Manager-vs-Input-System dependency question
   `BeanMouseTracker` already had to answer (see `DESIGN.md` §8.6) would need revisiting for
   discrete events specifically. Not started.
+- **`BeanMouseTracker` should actually work on New-Input-System-only projects, not just degrade
+  gracefully.** Distinct from the discrete-input-events item above — this is about completing
+  existing functionality (cursor *position* tracking), not adding a new capability. BUG-05's fix
+  (`v0.2.0`) stopped it from throwing, but it still can't read the mouse at all in that config — it
+  reads legacy `Input.mousePosition` only, by deliberate design (see `DESIGN.md` §8.6), to avoid a
+  hard dependency on the Input System package. **Real corroborating demand from two independent
+  teams now:** `little wings` first, then `astro aces` (2026-08-22) — who had to write their own
+  `Mouse.current`-based capture from scratch mid-debugging-session because `BeanMouseTracker` simply
+  wasn't usable for their actual bug. Would need a `Unity.InputSystem`-referencing code path gated
+  behind `ENABLE_INPUT_SYSTEM` (only defined when that package is actually installed, so it wouldn't
+  reintroduce the hard dependency UTI avoided) — same asmdef `versionDefines` mechanism flagged as
+  unverifiable without a live Editor back when BUG-05 was first fixed. Not designed, not started.
 - **Safer guidance (or a code-level accommodation) for adding Beans to DOTS/Netcode-for-Entities
   subscene-baked "ghost" prefabs — raised in priority as real online-game integration coverage, not
   just a niche pipeline quirk.** Found in `bitshot` (a Bring-Your-Own-Test round): adding
@@ -176,6 +196,13 @@ remembering, not a plan. Nothing here should be started without a real design pa
   overhead (capture interval cost, buffer memory, multiple simultaneous outputs) in a real project,
   not just one component's worst case. Not scoped: would need a real project with a meaningful
   object count to test against, same Bring-Your-Own-Test constraint as everything else here.
+- **A "flag the tick where field X changes discontinuously" helper.** Nice-to-have idea from
+  `astro aces`' report (2026-08-22): they manually `grep`/`awk`'d a CSV to find the exact tick where
+  a `CustomCapture` value spiked, which cracked a months-old bug. Wasn't hard to do by hand this
+  time, but a small helper to scan a captured log/buffer for the first discontinuous jump in a named
+  field could save that manual step. Related to the promoted assert/validator layer above (both are
+  about *analyzing* an already-captured run) but distinct in purpose — an assert checks a known
+  expected condition, this would surface an *unknown* anomaly. Not scoped, not designed.
 - **A 3D-explorable scene artifact, not just a fixed-angle snapshot.** Instead of (or alongside)
   `BeanSnapshotExporter`'s flat PNG, export something a dev can actually rotate/pan/zoom through
   after the fact. Would completely solve the "one angle doesn't show everything" problem multi-angle
@@ -217,6 +244,12 @@ curious.)
 
 ## Change Log
 
+- 2026-08-22 15:58 — First report from a new team, `astro aces`: real validation (a months-old
+  flight-aim bug closed via `CustomCapture`), plus three real findings — promoted a fifth Roadmap
+  item (`BeanMouseTracker`'s Input System gap, now corroborated by two teams), logged BUG-12
+  (`package.json`'s `unity: 6000.5` floor looks arbitrary, not yet safe to lower), and added a
+  Dream To-Do idea for a discontinuity-detection log helper. Full detail: `TESTS/BugTracker.md`
+  BUG-05/BUG-12.
 - 2026-08-22 12:08 — **Version bump: 0.2.1 → 0.2.2.** `little wings` ran BUG-06's new EditMode
   tests live against `v0.2.1`; one failed due to a test-ordering bug (fixed) rather than the
   runtime fix itself. Also ships BUG-11 (two doc `.meta` files that existed on disk but were never
