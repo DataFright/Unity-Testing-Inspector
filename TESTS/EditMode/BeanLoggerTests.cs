@@ -259,11 +259,11 @@ namespace UTI.Tests
             var go = new GameObject("BeanLoggerTestObject");
             var tracker = go.AddComponent<BeanTracker>();
             var logger = go.AddComponent<BeanLogger>();
+            logger.FilePath = path; // set before Open() - the fix reopens synchronously on the OutputTargets change below, so FilePath must already be in place by then, same as any real caller would set it before touching OutputTargets
             logger.OutputTargets = BeanOutputTargets.Console;
             logger.Open(); // simulates the synchronous OnEnable()->Open() a real runtime AddComponent<BeanLogger>() would trigger
 
-            logger.OutputTargets = BeanOutputTargets.Console | BeanOutputTargets.Csv; // changed after Open() already ran
-            logger.FilePath = path;
+            logger.OutputTargets = BeanOutputTargets.Console | BeanOutputTargets.Csv; // changed after Open() already ran - triggers the fix's auto-reopen immediately
 
             tracker.ClearSamples();
             tracker.StartTracking();

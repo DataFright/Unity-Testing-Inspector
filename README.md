@@ -10,7 +10,7 @@ assertions to write. Just attach it, hit Play, and look at the trail.
 Free and open source (MIT — see [LICENSE](./LICENSE)). Built to eventually land on the Unity Asset
 Store; usable as a Unity package today, installed straight from GitHub (see Install below).
 
-**Current release: `v0.2.1`** — see [docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md)'s Change
+**Current release: `v0.2.2`** — see [docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md)'s Change
 Log for what's in it and everything before it.
 
 ## The problem
@@ -49,10 +49,10 @@ question instead of "whatever happened to be on disk/`main` at install time" —
 [docs/DESIGN.md](./docs/DESIGN.md)'s Target Environment table for why this matters in practice.
 
 Via Unity Package Manager: Window > Package Manager > `+` > "Add package from git URL", then paste
-(swap in whatever the current release tag is — **`v0.2.1`** as of this writing):
+(swap in whatever the current release tag is — **`v0.2.2`** as of this writing):
 
 ```
-https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.1
+https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.2
 ```
 
 Or edit your project's `Packages/manifest.json` by hand:
@@ -60,7 +60,7 @@ Or edit your project's `Packages/manifest.json` by hand:
 ```json
 {
   "dependencies": {
-    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.1",
+    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.2",
     ...
   },
   "testables": [
@@ -76,7 +76,7 @@ Once it resolves, run **UTI > Setup Project (Config + Docs)** from the Editor me
 bootstraps a `BeanConfig.txt` and copies the full end-user docs into your own project's `UTI/`
 folder, right next to the CSVs/PNGs it'll generate.
 
-**To update**, bump the `#v0.2.1` in your `manifest.json` to whatever the new release tag is and let
+**To update**, bump the `#v0.2.2` in your `manifest.json` to whatever the new release tag is and let
 Package Manager re-resolve — that one-line diff is the whole update.
 
 **Actively developing UTI's own source (not just using it)?** Clone this repo somewhere on disk and

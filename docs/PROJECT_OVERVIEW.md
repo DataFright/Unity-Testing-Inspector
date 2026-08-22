@@ -217,6 +217,11 @@ curious.)
 
 ## Change Log
 
+- 2026-08-22 12:08 — **Version bump: 0.2.1 → 0.2.2.** `little wings` ran BUG-06's new EditMode
+  tests live against `v0.2.1`; one failed due to a test-ordering bug (fixed) rather than the
+  runtime fix itself. Also ships BUG-11 (two doc `.meta` files that existed on disk but were never
+  committed, causing a real Unity import warning on every fresh install). Every install example
+  updated to the new tag.
 - 2026-08-22 10:51 — **Version bump: 0.2.0 → 0.2.1**, shipping BUG-06's fix
   (`BeanLogger.OutputTargets` now re-opens on an actual change instead of silently no-op'ing).
   Every install example across `README.md`/`docs/USAGE.md`/`TESTS/TestTracker.md` updated to the

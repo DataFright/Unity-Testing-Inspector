@@ -19,10 +19,10 @@ bare branch URL, and never a local `"file:"` path. The tag pin is what makes "wh
 on" a real, checkable answer instead of "whatever was on disk/`main` the day someone installed it."
 
 Via Unity Package Manager: Window > Package Manager > `+` > "Add package from git URL", then paste
-(swap in the current release tag — **`v0.2.1`** as of this writing):
+(swap in the current release tag — **`v0.2.2`** as of this writing):
 
 ```
-https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.1
+https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.2
 ```
 
 Or edit your project's `Packages/manifest.json` directly:
@@ -30,7 +30,7 @@ Or edit your project's `Packages/manifest.json` directly:
 ```json
 {
   "dependencies": {
-    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.1",
+    "com.uti.core": "https://github.com/DataFright/Unity-Testing-Inspector.git#v0.2.2",
     ...
   },
   "testables": [
@@ -39,7 +39,7 @@ Or edit your project's `Packages/manifest.json` directly:
 }
 ```
 
-**To update later:** bump the `#v0.2.1` to whatever the new release tag is and let Package Manager
+**To update later:** bump the `#v0.2.2` to whatever the new release tag is and let Package Manager
 re-resolve.
 
 **Actively developing UTI's own source, not just using it?** That's the one case where a local

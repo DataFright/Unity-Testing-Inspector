@@ -15,11 +15,12 @@ what's actually *confirmed*, not assumed, per project. **Update a row whenever a
 confirms (not guesses) a project's setting** — reading `ProjectSettings/ProjectSettings.asset`
 directly, as opposed to inferring from docs or a prior session's notes.
 
-**UTI's own version:** `package.json`'s `version` field is the source of truth — currently **0.2.1**
+**UTI's own version:** `package.json`'s `version` field is the source of truth — currently **0.2.2**
 (0.1.0 → 0.2.0 on 2026-08-21 once real semver tracking started mattering; 0.2.0 → 0.2.1 on
-2026-08-22 for BUG-06's fix). **Policy as of 2026-08-21: every consuming/test project installs from
-the GitHub URL,
-pinned to a specific release tag — never via a local `"file:"` path.** A tag pin is what makes the
+2026-08-22 for BUG-06's fix; 0.2.1 → 0.2.2 same day for a test-ordering fix plus BUG-11, two doc
+`.meta` files that existed on disk but were never committed). **Policy as of 2026-08-21: every
+consuming/test project installs from the GitHub URL, pinned to a specific release tag — never via a
+local `"file:"` path.** A tag pin is what makes the
 "UTI Version" column below a real, checkable answer instead of "whatever's on disk right now"; a
 `file:` reference can't drift by definition, which sounds safe but also means there's nothing to
 compare against latest, and no way to tell a project's actually behind. See `CLAUDE.md`'s "Public
@@ -28,7 +29,7 @@ install/update.
 
 | Project | Unity Version | Active Input Handling | UTI Install Method | UTI Version | Last Directly Confirmed |
 |---|---|---|---|---|---|
-| `little wings` | 6000.5.6f1 | **New Input System only** (`activeInputHandler: 1`) — briefly flipped to "Both" for BUG-05's legacy-branch check, confirmed reverted back to `1` on disk afterward | **Migrated.** Tag-pinned GitHub URL — no more `file:` | **`v0.2.0` as of 2026-08-21** (self-reported by their own `manage_packages` job result, not assumed from the tag name) — **stale as of 2026-08-22, `v0.2.1` now available with BUG-06's fix; update requested, not yet reconfirmed** | 2026-08-21, by the `little wings` team directly (full reinstall + BUG-05 verification report) |
+| `little wings` | 6000.5.6f1 | **New Input System only** (`activeInputHandler: 1`) — briefly flipped to "Both" for BUG-05's legacy-branch check, confirmed reverted back to `1` on disk afterward | **Migrated.** Tag-pinned GitHub URL — no more `file:` | **`v0.2.1`, confirmed 2026-08-22** (self-reported `result_version: "0.2.1"`) — **stale again as of the same day, `v0.2.2` now available (test fix + BUG-11); update requested, not yet reconfirmed** | 2026-08-22, by the `little wings` team directly (BUG-06 verification report) |
 | `project 2` | 6000.5.6f1 (assumed — original baseline, not reverified) | Unknown — never directly checked | `file:` local package — **needs migration** to a tag-pinned GitHub URL install per the new policy | Untrackable while on `file:` (always reflects current source) | Not reconfirmed since original baseline |
 | `2d project 3` | 6000.5.6f1 (assumed — original baseline, not reverified) | Unknown — never directly checked | Assumed `file:` local package, unconfirmed — **needs migration** once confirmed | Untrackable while on `file:` | Not reconfirmed since original baseline |
 
@@ -561,6 +562,10 @@ Full boundary-by-boundary writeup (what each guard replaced, and the bugs found 
 
 ## Change Log
 
+- 2026-08-22 12:08 — Version bumped 0.2.1 → 0.2.2: a test-ordering fix for BUG-06's tests plus
+  BUG-11 (two doc `.meta` files that existed on disk but were never committed). Target Environment
+  table's `little wings` row updated to their confirmed `v0.2.1`, flagged stale again against the
+  new `v0.2.2`.
 - 2026-08-22 10:51 — Version bumped 0.2.0 → 0.2.1 for BUG-06's fix. Target Environment table's
   `little wings` row flagged stale (confirmed at `v0.2.0`, update requested but not yet reconfirmed).
 - 2026-08-22 08:31 — **Added step 6 to the Bring-Your-Own-Test Protocol: a team's involvement ends
